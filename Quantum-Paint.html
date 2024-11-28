@@ -1,0 +1,1943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Paint</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@2.33.0/dist/full.css" rel="stylesheet" type="text/css" />
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .modal-box .form-control,
+        .modal-box .modal-action {
+            margin-bottom: 1rem; /* Adjust the spacing as needed */
+        }
+        .modal-box .btn-primary {
+            margin-bottom: 0; /* Remove margin for the OK button */
+        }
+        .modal-box h3 {
+            margin-bottom: 0.5rem; /* Reduce the gap below the heading */
+        }
+        .modal-box .flex {
+            margin-top: 0; /* Remove any top margin from the flex container */
+        }
+        #colorWheel {
+            display: block; /* Ensure the canvas is displayed */
+            margin: 0 auto; /* Center the canvas horizontally */
+            border-radius: 50%; /* Make it circular */
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2); /* Add a subtle shadow */
+        }
+        #colorPalette {
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+        .slider-container {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .slider-label {
+            width: 50px;
+            text-align: right;
+            margin-right: 10px;
+        }
+        .cursor-nwse-resize { cursor: nwse-resize; }
+        .cursor-nesw-resize { cursor: nesw-resize; }
+        .cursor-ns-resize { cursor: ns-resize; }
+        .cursor-ew-resize { cursor: ew-resize; }
+        .cursor-default { cursor: default; }
+        .custom-cursor {
+            cursor: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cGF0aCBkPSJNOC4wNzEgMTUuMjk1bC02LjQyOC02LjQyOGExIDEgMCAwIDEgMC0xLjQxNGw2LjQyOC02LjQyOGExIDEgMCAwIDEgMS40MTQgMCAxIDEgMCAwIDEgMCAxLjQxNGwtNS4yMTUgNS4yMTVoMTIuNDI5YTEgMSAwIDAgMSAwIDIuMzg2SDEuODU2bDUuMjE1IDUuMjE1YTEgMSAwIDAgMSAwIDEuNDE0eiIvPjwvc3ZnPg==') 8 8, auto;
+        }
+        .resize-handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: white;
+            border: 2px solid #1a73e8; /* Google blue color */
+            border-radius: 50%; /* Makes them circular */
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+            z-index: 1000;
+            pointer-events: auto;
+            box-shadow: 0 0 3px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+            transform: translate(-50%, -50%); /* Center the handle on its position */
+        }
+        .resize-handle:hover {
+            background: #f8f9fa; /* Slight color change on hover */
+            border-color: #1557b0; /* Darker blue on hover */
+        }
+        .handle-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none; /* Allows clicking through the container to the canvas */
+        }
+        .delete-button {
+            position: absolute;
+            background: white;
+            border: 2px solid #1a73e8;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #1a73e8;
+            font-size: 14px;
+            transform: translate(50%, -50%);
+            z-index: 1000;
+            pointer-events: auto;
+        }
+
+        .delete-button:hover {
+            background: #f8f9fa;
+            color: #d93025;
+            border-color: #d93025;
+        }
+
+        @keyframes grow {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes shrink {
+            from {
+                transform: scale(1);
+                opacity: 1;
+            }
+            to {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+        }
+
+        .modal-box.keybinds-modal {
+            animation: grow 0.2s ease-out;
+        }
+
+        .modal-box.keybinds-modal.closing {
+            animation: shrink 0.2s ease-in;
+        }
+
+        /* Override DaisyUI's default modal transition */
+        .modal {
+            transition: none;
+        }
+        
+        .modal-box {
+            transition: none;
+        }
+
+        /* Custom Scrollbar Styles */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: hsl(var(--b2));
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: hsl(var(--p));
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: hsl(var(--pf));
+        }
+
+        /* Custom Slider Styles */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        /* Track */
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: hsl(var(--b2));
+            border-radius: 0.5rem;
+            height: 0.5rem;
+        }
+
+        input[type="range"]::-moz-range-track {
+            background: hsl(var(--b2));
+            border-radius: 0.5rem;
+            height: 0.5rem;
+        }
+
+        /* Thumb */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            margin-top: -4px;
+            background-color: hsl(var(--p));
+            border-radius: 50%;
+            height: 1rem;
+            width: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            border: none;
+            background-color: hsl(var(--p));
+            border-radius: 50%;
+            height: 1rem;
+            width: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        /* Hover */
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background-color: hsl(var(--pf));
+            box-shadow: 0 0 0 2px hsl(var(--b2));
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+            background-color: hsl(var(--pf));
+            box-shadow: 0 0 0 2px hsl(var(--b2));
+        }
+
+        /* Focus */
+        input[type="range"]:focus {
+            outline: none;
+        }
+
+        input[type="range"]:focus::-webkit-slider-thumb {
+            background-color: hsl(var(--pf));
+            box-shadow: 0 0 0 2px hsl(var(--b2));
+        }
+
+        input[type="range"]:focus::-moz-range-thumb {
+            background-color: hsl(var(--pf));
+            box-shadow: 0 0 0 2px hsl(var(--b2));
+        }
+
+        /* Slider Container Styles */
+        .slider-container {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background: hsl(var(--b1));
+            border-radius: 0.5rem;
+        }
+
+        .slider-label {
+            width: 50px;
+            text-align: right;
+            margin-right: 10px;
+            color: hsl(var(--bc));
+            font-weight: 500;
+        }
+
+        /* Modal Animations */
+        @keyframes grow {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes shrink {
+            from {
+                transform: scale(1);
+                opacity: 1;
+            }
+            to {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+        }
+
+        .modal-box.animated-modal {
+            animation: grow 0.2s ease-out;
+            max-height: 90vh; /* Allow scrolling for tall content */
+            overflow-y: auto; /* Enable scrolling */
+        }
+
+        .modal-box.animated-modal.closing {
+            animation: shrink 0.2s ease-in;
+        }
+
+        /* Override DaisyUI's default modal transition */
+        .modal {
+            transition: none;
+        }
+        
+        .modal-box {
+            transition: none;
+        }
+        .custom-menu {
+            display: none;
+            position: absolute;
+            background-color: hsl(var(--b1)); /* Match theme's base color */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* Add shadow for depth */
+            z-index: 1000;
+            list-style: none;
+            padding: 10px;
+            border-radius: 8px; /* Slightly more rounded corners */
+        }
+        .custom-menu li {
+            padding: 8px 12px;
+            cursor: pointer;
+            color: hsl(var(--bc)); /* Inherit text color from theme */
+            transition: background-color 0.3s ease; /* Smooth transition */
+            border-radius: 4px; /* Add corner radius to buttons */
+        }
+        .custom-menu li:hover {
+            background-color: hsl(var(--b2)); /* Use theme's secondary color */
+        }
+        .custom-option {
+            padding: 0.5rem;
+            color: inherit; /* Inherit text color */
+            background-color: inherit; /* Inherit background color */
+            border-radius: 5px; /* Add corner radius */
+        }
+        .custom-option:hover {
+            background-color: hsl(var(--b1)); /* Use theme's base color */
+        }
+
+        .canvas-container {
+            border-radius: 12px; /* Rounded corners */
+            overflow: hidden; /* Ensures the canvas respects the border radius */
+            margin-bottom: 1rem; /* Space below the canvas */
+            background: hsl(var(--b1)); /* Match the theme background */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* Black shadow similar to dropdowns */
+        }
+
+        #paintCanvas {
+            display: block; /* Ensures the canvas is a block element */
+            margin: 0 auto; /* Centers the canvas horizontally */
+            background: hsl(var(--b2)); /* Match the theme background */
+            border: none; /* Remove any border */
+        }
+
+        /* Base styles for hover effects */
+        .interactive-element {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .interactive-element:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Media query for larger screens */
+        @media (min-width: 768px) {
+            .interactive-element:hover {
+                transform: scale(1.1);
+                box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        /* Media query for smaller screens */
+        @media (max-width: 767px) {
+            .interactive-element:hover {
+                transform: scale(1.03);
+                box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+            }
+        }
+        .icon-white {
+            filter: invert(100%) sepia(0%) saturate(0%) hue-rotate(93deg) brightness(105%) contrast(101%);
+        }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+    <div id="app" class="min-h-screen bg-base-200">
+        <header class="bg-base-100 shadow-lg">
+            <div class="container mx-auto py-4 flex justify-between items-center">
+                <h1 class="text-2xl font-bold flex items-center">
+                    <img src="https://www.svgrepo.com/show/501666/paint.svg" alt="Paint Icon" class="mr-2 w-6 h-6 icon-white">
+                    Quantum Paint
+                </h1>
+                <div>
+                    <button v-show="!isLoggedIn" @click="showLogin = true" class="btn btn-primary mr-2">Log In</button>
+                    <button v-show="!isLoggedIn" @click="showSignupForm = true" class="btn btn-primary">Sign Up</button>
+                    <button v-show="isLoggedIn" @click="logout" class="btn btn-primary">Log Out</button>
+                    <!-- <button v-show="isLoggedIn" @click="navigateTo('settings')" class="btn btn-primary">Settings</button> -->
+                    <button @click="showKeybinds = true" class="btn btn-primary">Keybinds</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Page Content -->
+        <div v-if="currentPage === 'main'" class="container mx-auto p-8">
+            <div v-show="isLoggedIn" class="flex flex-col items-center">
+                <div class="canvas-container relative bg-white shadow-lg rounded-lg overflow-hidden">
+                    <canvas id="paintCanvas" width="1000" height="600" class="border-2 border-gray-300"></canvas>
+                    <div class="handle-container"></div>
+                </div>
+                <div class="mt-4 flex flex-wrap justify-center space-x-2 space-y-2 bg-base-100 p-4 rounded-lg shadow-md">
+                    <div class="relative">
+                        <div class="w-8 h-8 rounded-full border-2 border-gray-300 cursor-pointer" :style="{ backgroundColor: currentColor }" @click="showColorPicker = true"></div>
+                    </div>
+                    <input type="range" v-model="brushSize" min="1" max="20" class="mr-2" />
+                    <button @click="undo" class="btn btn-xs btn-primary tooltip" data-tooltip="Undo Action">
+                        <i class="fas fa-undo"></i>
+                    </button>
+                    <button @click="redo" class="btn btn-xs btn-primary tooltip" data-tooltip="Redo Action">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                    <button @click="clearCanvas" class="btn btn-xs btn-primary">Clear</button>
+                    <button @click="exportImage('png')" class="btn btn-xs btn-primary">PNG</button>
+                    <button @click="exportImage('jpg')" class="btn btn-xs btn-primary">JPG</button>
+                    <button @click="exportImage('webp')" class="btn btn-xs btn-primary">WEBP</button>
+                    <button @click="addShape('rectangle')" class="btn btn-xs btn-primary">Rectangle</button>
+                    <button @click="addShape('circle')" class="btn btn-xs btn-primary">Circle</button>
+                    <button @click="printCanvas" class="btn btn-xs btn-primary tooltip" data-tooltip="Print">
+                        <i class="fas fa-print"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Color Picker Modal -->
+        <div v-show="showColorPicker" class="modal modal-open">
+            <div :class="['modal-box', 'animated-modal', {'closing': isColorPickerClosing}]">
+                <h3 class="font-bold text-lg">Select Color</h3>
+                <div class="flex flex-col items-center">
+                    <!-- Color Wheel with Indicator -->
+                    <div class="flex flex-col items-center">
+                        <canvas id="colorWheel" width="200" height="200" 
+                                @mousedown="startColorDrag"
+                                @mousemove="dragColor"
+                                @mouseup="stopColorDrag"
+                                @mouseleave="stopColorDrag"></canvas>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">Click on the wheel to select a hue.</p>
+                    <!-- Sliders -->
+                    <div class="w-full mb-4">
+                        <div class="slider-container">
+                            <span class="slider-label">Hue</span>
+                            <input type="range" v-model="hue" min="0" max="360" class="w-full" />
+                        </div>
+                        <div class="slider-container">
+                            <span class="slider-label">Sat</span>
+                            <input type="range" v-model="saturation" min="0" max="100" class="w-full" />
+                        </div>
+                        <div class="slider-container">
+                            <span class="slider-label">Bri</span>
+                            <input type="range" v-model="brightness" min="0" max="100" class="w-full" />
+                        </div>
+                        <div class="slider-container">
+                            <span class="slider-label">Alpha</span>
+                            <input type="range" v-model="alpha" min="0" max="1" step="0.01" class="w-full" />
+                        </div>
+                    </div>
+                    <!-- Single Color Input with Navigation -->
+                    <div class="flex items-center w-full mb-4">
+                        <button @click="prevColorFormat" class="btn btn-xs btn-primary mr-2">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span class="mr-2">{{ currentFormatLabel }}</span>
+                        <input type="text" v-model="currentColorInput" class="input input-bordered w-full" 
+                               :maxlength="currentFormatMaxLength" @input="validateColorInput" />
+                        <button @click="nextColorFormat" class="btn btn-xs btn-primary ml-2">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    <!-- Color Preview -->
+                    <div class="w-16 h-16 rounded-full border-2 border-gray-300 mb-4" :style="{ backgroundColor: currentColor || '#000000' }"></div>
+                    <!-- Color History -->
+                    <div class="w-full mb-4">
+                        <h4 class="font-bold text-md mb-2 text-center">Color History</h4>
+                        <div class="flex flex-wrap justify-center">
+                            <div v-if="colorHistory.length === 0" class="text-gray-500">No colors in history</div>
+                            <div v-for="(color, index) in colorHistory" :key="color" class="relative w-10 h-10 rounded-full border-2 border-gray-300 cursor-pointer shadow-md m-1" :style="{ backgroundColor: color }">
+                                <button @click="removeColor(index)" class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">x</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Error Message -->
+                    <div v-if="colorError" class="text-red-500 text-sm mt-2">{{ colorError }}</div>
+                </div>
+                <div class="modal-action">
+                    <button @click="enableCustomColorPick" class="btn btn-primary">Pick Custom Color</button>
+                    <button @click="closeColorPicker" class="btn btn-primary">OK</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Keybinds Modal -->
+        <div v-show="showKeybinds" class="modal modal-open">
+            <div :class="['modal-box', 'animated-modal', {'closing': isKeybindsClosing}]">
+                <h3 class="font-bold text-lg">Keybinds</h3>
+                <ul>
+                    <li><strong>Ctrl + Z:</strong> Undo</li>
+                    <li><strong>Ctrl + Y:</strong> Redo</li>
+                    <li><strong>Ctrl + S:</strong> Save</li>
+                    <li><strong>Ctrl + P:</strong> Print</li>
+                </ul>
+                <div class="modal-action">
+                    <button @click="closeKeybinds" class="btn btn-primary">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Right-Click Menu -->
+        <ul id="customMenu" class="custom-menu">
+            <li @click="viewLogs">View Logs</li>
+        </ul>
+
+        <!-- Add a new modal for displaying logs -->
+        <div v-show="showLogs" class="modal modal-open">
+            <div class="modal-box">
+                <h3 class="font-bold text-lg">Logs</h3>
+                <div class="overflow-y-auto max-h-96">
+                    <ul>
+                        <li v-for="(log, index) in logs" :key="index">{{ log }}</li>
+                    </ul>
+                </div>
+                <div class="modal-action">
+                    <button @click="closeLogs" class="btn btn-primary">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAox7SFwRsEIei_9s7d-9XjjE85ltcWh20",
+            authDomain: "quantum-paint.firebaseapp.com",
+            projectId: "quantum-paint",
+            storageBucket: "quantum-paint.firebasestorage.app",
+            messagingSenderId: "709356947073",
+            appId: "1:709356947073:web:7369431e6e980fbae62f80",
+    measurementId: "G-Z35QDLD7P7"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        new Vue({
+            el: '#app',
+            data: {
+                isLoggedIn: false,
+                showLogin: false,
+                showSignupForm: false,
+                loginEmail: '',
+                loginPassword: '',
+                signupEmail: '',
+                signupPassword: '',
+                error: null,
+                showError: false,
+                currentColor: 'black',
+                isDrawing: false,
+                uploadedImage: null,
+                brushSize: 5,
+                history: [],
+                historyIndex: -1,
+                shapes: [],
+                selectedShape: null,
+                isDragging: false,
+                dragOffsetX: 0,
+                dragOffsetY: 0,
+                isResizing: false,
+                isRotating: false,
+                showColorPicker: false,
+                hue: 0,
+                saturation: 100,
+                brightness: 100,
+                hexColor: '#000000',
+                rgbColor: 'rgb(0, 0, 0)',
+                hslColor: 'hsl(0, 0%, 0%)',
+                colorError: null,
+                colorFormats: ['HEX', 'RGB', 'HSL'],
+                currentFormatIndex: 0,
+                currentColorInput: '',
+                pickingCustomColor: false,
+                alpha: 1,
+                colorHistory: [],
+                prevX: 0,
+                prevY: 0,
+                showKeybinds: false,
+                isKeybindsClosing: false,
+                freehandPaths: [], // Store freehand drawing paths
+                currentPath: [], // Current path being drawn
+                mode: 'draw', // Default mode is 'draw'
+                resizeHandle: null,
+                resizeHandles: [],
+                resizeStartX: 0,
+                resizeStartY: 0,
+                initialShapeDimensions: null,
+                isColorPickerClosing: false,
+                isColorDragging: false,
+                images: [], // Array to store image elements
+                showLogs: false,
+                logs: [], // Array to store log messages
+                currentUser: null, // Store the current user's email or username
+                currentPage: 'main', // Track the current page
+                notificationPreference: 'all', // Example setting
+                theme: 'light', // Theme setting
+                language: 'en', // Language setting
+                dropdownOpen: {
+                    notification: false,
+                    theme: false,
+                    language: false
+                },
+                notificationOptions: [
+                    { value: 'all', label: 'All Notifications' },
+                    { value: 'email', label: 'Email Only' },
+                    { value: 'none', label: 'No Notifications' }
+                ],
+                themeOptions: [
+                    { value: 'light', label: 'Light' },
+                    { value: 'dark', label: 'Dark' },
+                    { value: 'system', label: 'System Default' }
+                ],
+                languageOptions: [
+                    { value: 'en', label: 'English' },
+                    { value: 'es', label: 'Spanish' },
+                    { value: 'fr', label: 'French' }
+                ]
+            },
+            computed: {
+                currentFormatLabel() {
+                    switch (this.colorFormats[this.currentFormatIndex]) {
+                        case 'HEX':
+                            return '#';
+                        case 'RGB':
+                            return 'RGB';
+                        case 'HSL':
+                            return 'HSL';
+                        case 'RGBA':
+                            return 'RGBA';
+                    }
+                },
+                currentFormatMaxLength() {
+                    switch (this.colorFormats[this.currentFormatIndex]) {
+                        case 'HEX':
+                            return 7; // #RRGGBB
+                        case 'RGB':
+                            return 11; // R, G, B
+                        case 'HSL':
+                            return 14; // H, S%, L%
+                        default:
+                            return 0;
+                    }
+                },
+                notificationPreferenceLabel() {
+                    return this.notificationOptions.find(option => option.value === this.notificationPreference).label;
+                },
+                themeLabel() {
+                    return this.themeOptions.find(option => option.value === this.theme).label;
+                },
+                languageLabel() {
+                    return this.languageOptions.find(option => option.value === this.language).label;
+                }
+            },
+            watch: {
+                hue(newValue) {
+                    this.updateColor();
+                },
+                saturation(newValue) {
+                    this.updateColor();
+                },
+                brightness(newValue) {
+                    this.updateColor();
+                },
+                alpha: 'updateColor',
+                currentColorInput: 'updateColorFromInput'
+            },
+            methods: {
+                login() {
+                    auth.signInWithEmailAndPassword(this.loginEmail, this.loginPassword)
+                        .then((userCredential) => {
+                            this.isLoggedIn = true;
+                            this.showLogin = false;
+                            this.currentUser = userCredential.user.email; // Store the user's email
+                            console.log("User logged in");
+                        })
+                        .catch((error) => {
+                            console.error("Error logging in", error);
+                            this.error = error.message;
+                            this.showError = true;
+                        });
+                },
+                signup() {
+                    auth.createUserWithEmailAndPassword(this.signupEmail, this.signupPassword)
+                        .then(() => {
+                            this.isLoggedIn = true;
+                            this.showSignupForm = false;
+                            console.log("User signed up");
+                        })
+                        .catch((error) => {
+                            console.error("Error signing up", error);
+                            this.error = error.message;
+                            this.showError = true;
+                        });
+                },
+                logout() {
+                    auth.signOut()
+                        .then(() => {
+                            this.isLoggedIn = false;
+                            this.currentUser = null; // Clear the current user
+                            console.log("User logged out");
+                        })
+                        .catch((error) => {
+                            console.error("Error logging out", error);
+                            this.error = "Error logging out";
+                            this.showError = true;
+                        });
+                },
+                changeColor(color) {
+                    this.currentColor = color;
+                },
+                clearCanvas() {
+                    const canvas = document.getElementById('paintCanvas');
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    this.shapes = []; // Clear the shapes array
+                    this.freehandPaths = []; // Clear the freehand paths
+                    this.images = []; // Clear the images array
+                    this.saveState(); // Save the cleared state
+                    console.log("Canvas cleared and history reset");
+                },
+                startDrawing(event) {
+                    const x = event.offsetX;
+                    const y = event.offsetY;
+                    
+                    // If we click on a shape, don't start drawing
+                    if (this.isClickingShape(x, y)) return;
+                    
+                    this.mode = 'draw'; // Automatically switch to draw mode
+                    this.isDrawing = true;
+                    this.currentPath = [{ x, y, brushSize: this.brushSize, color: this.currentColor }]; // Store color with path
+                    
+                    // Clear shape selection when starting to draw
+                    this.selectedShape = null;
+                    this.clearSelectionBox();
+                },
+                draw(event) {
+                    if (!this.isDrawing || this.mode !== 'draw') return; // Only draw in 'draw' mode
+
+                    const x = event.offsetX;
+                    const y = event.offsetY;
+                    this.currentPath.push({ x, y, brushSize: this.brushSize, color: this.currentColor }); // Store color with path
+                    this.redrawCanvas();
+                },
+                stopDrawing() {
+                    if (this.isDrawing && this.mode === 'draw') {
+                        this.freehandPaths.push([...this.currentPath]);
+                        this.currentPath = [];
+                        this.saveState(); // Save the state after drawing
+                        this.isDrawing = false;
+                    }
+                },
+                uploadImage(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const img = new Image();
+                            img.onload = () => {
+                                const imageElement = {
+                                    img: img,
+                                    x: 100, // Initial x position
+                                    y: 100, // Initial y position
+                                    width: img.width,
+                                    height: img.height
+                                };
+                                this.images.push(imageElement);
+                                this.redrawCanvas();
+                                this.saveState(); // Save the state after adding the image
+                            };
+                            img.src = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                },
+                redrawCanvas() {
+                    const canvas = document.getElementById('paintCanvas');
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    // Redraw freehand paths
+                    this.freehandPaths.forEach(path => {
+                        ctx.beginPath();
+                        path.forEach((point, index) => {
+                            if (index === 0) {
+                                ctx.moveTo(point.x, point.y);
+                            } else {
+                                ctx.lineTo(point.x, point.y);
+                            }
+                        });
+                        ctx.strokeStyle = path[0].color || this.currentColor; // Use stored color if available
+                        ctx.lineWidth = path[0].brushSize; // Use stored brush size
+                        ctx.stroke();
+                    });
+
+                    // Draw current path
+                    if (this.currentPath.length > 0) {
+                        ctx.beginPath();
+                        this.currentPath.forEach((point, index) => {
+                            if (index === 0) {
+                                ctx.moveTo(point.x, point.y);
+                            } else {
+                                ctx.lineTo(point.x, point.y);
+                            }
+                        });
+                        ctx.strokeStyle = this.currentColor; // Current color is already correct for current path
+                        ctx.lineWidth = this.currentPath[0].brushSize; // Use stored brush size
+                        ctx.stroke();
+                    }
+
+                    // Draw shapes
+                    this.shapes.forEach(shape => {
+                        ctx.fillStyle = shape.color;
+                        if (shape.type === 'rectangle') {
+                            ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+                        } else if (shape.type === 'circle') {
+                            ctx.beginPath();
+                            ctx.arc(shape.x + shape.width / 2, shape.y + shape.height / 2, shape.width / 2, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    });
+
+                    // Draw images
+                    this.images.forEach(image => {
+                        if (image.img.complete) { // Ensure the image is fully loaded
+                            ctx.drawImage(image.img, image.x, image.y, image.width, image.height);
+                        } else {
+                            image.img.onload = () => {
+                                ctx.drawImage(image.img, image.x, image.y, image.width, image.height);
+                            };
+                        }
+                    });
+
+                    // Draw selection box if a shape or image is selected
+                    this.drawSelectionBox();
+                },
+                selectShape(event) {
+                    if (this.isResizing) return;
+                    
+                    const x = event.offsetX;
+                    const y = event.offsetY;
+                    
+                    const clickedShape = this.findShapeAtPosition(x, y);
+                    if (clickedShape) {
+                        event.stopPropagation();
+                        this.mode = 'shape';
+                        this.selectedShape = clickedShape;
+                        this.isDragging = true;
+                        this.dragOffsetX = x - clickedShape.x;
+                        this.dragOffsetY = y - clickedShape.y;
+                        this.redrawCanvas();
+                    } else {
+                        const clickedImage = this.findImageAtPosition(x, y);
+                        if (clickedImage) {
+                            event.stopPropagation();
+                            this.mode = 'image';
+                            this.selectedShape = clickedImage;
+                            this.isDragging = true;
+                            this.dragOffsetX = x - clickedImage.x;
+                            this.dragOffsetY = y - clickedImage.y;
+                            this.redrawCanvas();
+                        } else {
+                            this.clearSelection();
+                        }
+                    }
+                },
+                findImageAtPosition(x, y) {
+                    for (let i = this.images.length - 1; i >= 0; i--) {
+                        const image = this.images[i];
+                        if (x >= image.x && x <= image.x + image.width && y >= image.y && y <= image.y + image.height) {
+                            return image;
+                        }
+                    }
+                    return null;
+                },
+                dragShape(event) {
+                    if (!this.isDragging || !this.selectedShape) return;
+                    
+                    event.stopPropagation();
+                    event.preventDefault();
+                    
+                    const x = event.offsetX;
+                    const y = event.offsetY;
+                    
+                    // Ensure we're still within canvas bounds
+                    const canvas = document.getElementById('paintCanvas');
+                    if (x >= 0 && x <= canvas.width && y >= 0 && y <= canvas.height) {
+                        this.selectedShape.x = x - this.dragOffsetX;
+                        this.selectedShape.y = y - this.dragOffsetY;
+                        this.redrawCanvas();
+                    }
+                },
+                stopDragging(event) {
+                    if (this.isDragging) {
+                        event.stopPropagation();
+                        event.preventDefault();
+                        this.isDragging = false;
+                        this.saveState();
+                    }
+                },
+                triggerFileInput() {
+                    const fileInput = document.getElementById('fileInput');
+                    fileInput.click();
+                },
+                exportImage(format) {
+                    // Temporarily hide selection
+                    const wasSelected = this.selectedShape;
+                    this.selectedShape = null;
+                    this.redrawCanvas();
+
+                    const canvas = document.getElementById('paintCanvas');
+                    const dataURL = canvas.toDataURL(`image/${format}`);
+                    const link = document.createElement('a');
+                    link.href = dataURL;
+                    link.download = `painting.${format}`;
+                    link.click();
+
+                    // Restore selection
+                    this.selectedShape = wasSelected;
+                    this.redrawCanvas();
+                    console.log(`Exported image as ${format.toUpperCase()}`);
+                },
+                undo() {
+                    if (this.historyIndex > 0) {
+                        this.historyIndex--;
+                        this.restoreState();
+                        console.log("Undo action performed");
+                    }
+                },
+                redo() {
+                    if (this.historyIndex < this.history.length - 1) {
+                        this.historyIndex++;
+                        this.restoreState();
+                        console.log("Redo action performed");
+                    }
+                },
+                saveState() {
+                    const canvas = document.getElementById('paintCanvas');
+                    if (this.historyIndex < this.history.length - 1) {
+                        this.history = this.history.slice(0, this.historyIndex + 1);
+                    }
+                    // Save the canvas state, shapes, freehand paths, and images
+                    this.history.push({
+                        canvas: canvas.toDataURL(),
+                        shapes: JSON.parse(JSON.stringify(this.shapes)), // Deep copy of shapes
+                        freehandPaths: JSON.parse(JSON.stringify(this.freehandPaths)), // Deep copy of freehand paths
+                        images: JSON.parse(JSON.stringify(this.images)) // Deep copy of images
+                    });
+                    this.historyIndex++;
+                    console.log("State saved");
+                },
+                restoreState() {
+                    const canvas = document.getElementById('paintCanvas');
+                    const ctx = canvas.getContext('2d');
+                    const state = this.history[this.historyIndex];
+
+                    // Restore shapes, freehand paths, and images
+                    this.shapes = JSON.parse(JSON.stringify(state.shapes));
+                    this.freehandPaths = JSON.parse(JSON.stringify(state.freehandPaths));
+                    this.images = JSON.parse(JSON.stringify(state.images));
+
+                    // Restore canvas
+                    const img = new Image();
+                    img.onload = () => {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0);
+                        this.redrawCanvas(); // Redraw shapes and images
+                    };
+                    img.src = state.canvas;
+                    console.log("State restored");
+                },
+                addShape(type) {
+                    this.mode = 'shape'; // Automatically switch to shape mode
+                    const shape = {
+                        type: type,
+                        color: this.currentColor,
+                        x: 100,
+                        y: 100,
+                        width: 100,
+                        height: 100,
+                        rotation: 0
+                    };
+                    this.shapes.push(shape);
+                    this.selectedShape = shape; // Select the new shape
+                    this.redrawCanvas();
+                    this.saveState();
+                },
+                redrawCanvas() {
+                    const canvas = document.getElementById('paintCanvas');
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    // Redraw freehand paths
+                    this.freehandPaths.forEach(path => {
+                        ctx.beginPath();
+                        path.forEach((point, index) => {
+                            if (index === 0) {
+                                ctx.moveTo(point.x, point.y);
+                            } else {
+                                ctx.lineTo(point.x, point.y);
+                            }
+                        });
+                        ctx.strokeStyle = path[0].color || this.currentColor; // Use stored color if available
+                        ctx.lineWidth = path[0].brushSize; // Use stored brush size
+                        ctx.stroke();
+                    });
+
+                    // Draw current path
+                    if (this.currentPath.length > 0) {
+                        ctx.beginPath();
+                        this.currentPath.forEach((point, index) => {
+                            if (index === 0) {
+                                ctx.moveTo(point.x, point.y);
+                            } else {
+                                ctx.lineTo(point.x, point.y);
+                            }
+                        });
+                        ctx.strokeStyle = this.currentColor; // Current color is already correct for current path
+                        ctx.lineWidth = this.currentPath[0].brushSize; // Use stored brush size
+                        ctx.stroke();
+                    }
+
+                    // Draw shapes
+                    this.shapes.forEach(shape => {
+                        ctx.fillStyle = shape.color; // Use stored color
+                        if (shape.type === 'rectangle') {
+                            ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+                        } else if (shape.type === 'circle') {
+                            ctx.beginPath();
+                            ctx.arc(shape.x + shape.width / 2, shape.y + shape.height / 2, shape.width / 2, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    });
+
+                    // Draw images
+                    this.images.forEach(image => {
+                        if (image.img.complete) { // Ensure the image is fully loaded
+                            ctx.drawImage(image.img, image.x, image.y, image.width, image.height);
+                        } else {
+                            image.img.onload = () => {
+                                ctx.drawImage(image.img, image.x, image.y, image.width, image.height);
+                            };
+                        }
+                    });
+
+                    // Draw selection box if a shape or image is selected
+                    this.drawSelectionBox();
+                },
+                selectShape(event) {
+                    if (this.isResizing) return;
+                    
+                    const x = event.offsetX;
+                    const y = event.offsetY;
+                    
+                    const clickedShape = this.findShapeAtPosition(x, y);
+                    if (clickedShape) {
+                        event.stopPropagation();
+                        this.mode = 'shape';
+                        this.selectedShape = clickedShape;
+                        this.isDragging = true;
+                        this.dragOffsetX = x - clickedShape.x;
+                        this.dragOffsetY = y - clickedShape.y;
+                        this.redrawCanvas();
+                    } else {
+                        const clickedImage = this.findImageAtPosition(x, y);
+                        if (clickedImage) {
+                            event.stopPropagation();
+                            this.mode = 'image';
+                            this.selectedShape = clickedImage;
+                            this.isDragging = true;
+                            this.dragOffsetX = x - clickedImage.x;
+                            this.dragOffsetY = y - clickedImage.y;
+                            this.redrawCanvas();
+                        } else {
+                            this.clearSelection();
+                        }
+                    }
+                },
+                findImageAtPosition(x, y) {
+                    for (let i = this.images.length - 1; i >= 0; i--) {
+                        const image = this.images[i];
+                        if (x >= image.x && x <= image.x + image.width && y >= image.y && y <= image.y + image.height) {
+                            return image;
+                        }
+                    }
+                    return null;
+                },
+                dragShape(event) {
+                    if (!this.isDragging || !this.selectedShape) return;
+                    
+                    event.stopPropagation();
+                    event.preventDefault();
+                    
+                    const x = event.offsetX;
+                    const y = event.offsetY;
+                    
+                    // Ensure we're still within canvas bounds
+                    const canvas = document.getElementById('paintCanvas');
+                    if (x >= 0 && x <= canvas.width && y >= 0 && y <= canvas.height) {
+                        this.selectedShape.x = x - this.dragOffsetX;
+                        this.selectedShape.y = y - this.dragOffsetY;
+                        this.redrawCanvas();
+                    }
+                },
+                stopDragging(event) {
+                    if (this.isDragging) {
+                        event.stopPropagation();
+                        event.preventDefault();
+                        this.isDragging = false;
+                        this.saveState();
+                    }
+                },
+                pickColor(event) {
+                    const canvas = document.getElementById('colorPalette');
+                    const ctx = canvas.getContext('2d');
+                    const rect = canvas.getBoundingClientRect();
+                    const x = event.clientX - rect.left;
+                    const y = event.clientY - rect.top;
+                    const data = ctx.getImageData(x, y, 1, 1).data;
+                    const r = data[0];
+                    const g = data[1];
+                    const b = data[2];
+                    this.currentColor = `rgb(${r}, ${g}, ${b})`;
+                },
+                updateColor() {
+                    const newColor = `hsla(${this.hue}, ${this.saturation}%, ${this.brightness}%, ${this.alpha})`;
+                    
+                    // Apply color only to the selected shape or text
+                    if (this.selectedShape) {
+                        this.selectedShape.color = newColor;
+                    } else {
+                        this.currentColor = newColor;
+                    }
+                    
+                    this.updateColorInputs();
+                },
+                confirmColorSelection() {
+                    this.addToColorHistory(this.currentColor);
+                    this.showColorPicker = false;
+                },
+                updateColorInputs() {
+                    const rgb = this.hslToRgb(this.hue, this.saturation, this.brightness);
+                    this.hexColor = this.rgbToHex(rgb.r, rgb.g, rgb.b);
+                    this.rgbColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${this.alpha})`;
+                    this.hslColor = `hsla(${this.hue}, ${this.saturation}%, ${this.brightness}%, ${this.alpha})`;
+                },
+                updateColorFromInput() {
+                    switch (this.colorFormats[this.currentFormatIndex]) {
+                        case 'HEX':
+                            this.updateFromHex();
+                            break;
+                        case 'RGB':
+                            this.updateFromRGB();
+                            break;
+                        case 'HSL':
+                            this.updateFromHSL();
+                            break;
+                    }
+                },
+                prevColorFormat() {
+                    this.currentFormatIndex = (this.currentFormatIndex - 1 + this.colorFormats.length) % this.colorFormats.length;
+                    this.syncColorInput();
+                },
+                nextColorFormat() {
+                    this.currentFormatIndex = (this.currentFormatIndex + 1) % this.colorFormats.length;
+                    this.syncColorInput();
+                },
+                syncColorInput() {
+                    switch (this.colorFormats[this.currentFormatIndex]) {
+                        case 'HEX':
+                            this.currentColorInput = this.hexColor.replace('#', '');
+                            break;
+                        case 'RGB':
+                            this.currentColorInput = this.rgbColor.replace('rgb(', '').replace(')', '');
+                            break;
+                        case 'HSL':
+                            this.currentColorInput = this.hslColor.replace('hsl(', '').replace(')', '');
+                            break;
+                    }
+                },
+                updateFromHex() {
+                    const hex = `#${this.currentColorInput}`;
+                    if (!/^#([0-9A-F]{3}){1,2}$/i.test(hex)) {
+                        this.colorError = "Invalid HEX format. Use RRGGBB.";
+                    } else {
+                        this.colorError = null;
+                        const rgb = this.hexToRgb(hex);
+                        if (rgb) {
+                            this.currentColor = hex;
+                            this.rgbColor = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+                            const hsl = this.rgbToHsl(rgb.r, rgb.g, rgb.b);
+                            this.hue = hsl.h;
+                            this.saturation = hsl.s;
+                            this.brightness = hsl.l;
+                            this.hslColor = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+                        }
+                    }
+                },
+                updateFromRGB() {
+                    const match = this.currentColorInput.match(/(\d+),\s*(\d+),\s*(\d+)/);
+                    if (!match || match.slice(1).some(val => val < 0 || val > 255)) {
+                        this.colorError = "Invalid RGB format. Use R, G, B with values 0-255.";
+                    } else {
+                        this.colorError = null;
+                        const r = parseInt(match[1]);
+                        const g = parseInt(match[2]);
+                        const b = parseInt(match[3]);
+                        this.currentColor = `rgb(${r}, ${g}, ${b})`;
+                        this.hexColor = this.rgbToHex(r, g, b);
+                        const hsl = this.rgbToHsl(r, g, b);
+                        this.hue = hsl.h;
+                        this.saturation = hsl.s;
+                        this.brightness = hsl.l;
+                        this.hslColor = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+                    }
+                },
+                updateFromHSL() {
+                    const match = this.currentColorInput.match(/(\d+),\s*(\d+)%,\s*(\d+)%/);
+                    if (!match || match[1] < 0 || match[1] > 360 || match[2] < 0 || match[2] > 100 || match[3] < 0 || match[3] > 100) {
+                        this.colorError = "Invalid HSL format. Use H, S%, L% with H: 0-360, S/L: 0-100.";
+                    } else {
+                        this.colorError = null;
+                        this.hue = parseInt(match[1]);
+                        this.saturation = parseInt(match[2]);
+                        this.brightness = parseInt(match[3]);
+                        this.updateColor();
+                    }
+                },
+                rgbToHex(r, g, b) {
+                    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+                },
+                hexToRgb(hex) {
+                    const match = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+                    return match ? {
+                        r: parseInt(match[1], 16),
+                        g: parseInt(match[2], 16),
+                        b: parseInt(match[3], 16)
+                    } : null;
+                },
+                rgbToHsl(r, g, b) {
+                    r /= 255, g /= 255, b /= 255;
+                    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+                    let h, s, l = (max + min) / 2;
+                    if (max === min) {
+                        h = s = 0;
+                    } else {
+                        const d = max - min;
+                        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                        switch (max) {
+                            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                            case g: h = (b - r) / d + 2; break;
+                            case b: h = (r - g) / d + 4; break;
+                        }
+                        h /= 6;
+                    }
+                    return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+                },
+                hslToRgb(h, s, l) {
+                    let r, g, b;
+                    h /= 360;
+                    s /= 100;
+                    l /= 100;
+                    if (s === 0) {
+                        r = g = b = l;
+                    } else {
+                        const hue2rgb = (p, q, t) => {
+                            if (t < 0) t += 1;
+                            if (t > 1) t -= 1;
+                            if (t < 1 / 6) return p + (q - p) * 6 * t;
+                            if (t < 1 / 2) return q;
+                            if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                            return p;
+                        };
+                        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                        const p = 2 * l - q;
+                        r = hue2rgb(p, q, h + 1 / 3);
+                        g = hue2rgb(p, q, h);
+                        b = hue2rgb(p, q, h - 1 / 3);
+                    }
+                    return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+                },
+                drawColorWheel() {
+                    const canvas = document.getElementById('colorWheel');
+                    const ctx = canvas.getContext('2d');
+                    const radius = canvas.width / 2;
+                    const centerX = radius;
+                    const centerY = radius;
+
+                    // Clear the canvas
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    // Draw the color wheel
+                    for (let angle = 0; angle < 360; angle++) {
+                        const startAngle = (angle - 90) * (Math.PI / 180);
+                        const endAngle = (angle - 89) * (Math.PI / 180);
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(centerX, centerY);
+                        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+                        ctx.closePath();
+                        
+                        // Use HSL for consistent coloring
+                        ctx.fillStyle = `hsl(${angle}, 100%, 50%)`;
+                        ctx.fill();
+                    }
+
+                    // Create donut hole
+                    ctx.globalCompositeOperation = 'destination-out';
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, radius * 0.6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalCompositeOperation = 'source-over';
+                },
+                enableCustomColorPick() {
+                    this.showColorPicker = false;
+                    this.pickingCustomColor = true;
+                },
+                pickColorFromCanvas(event) {
+                    if (!this.pickingCustomColor) return;
+
+                    const canvas = document.getElementById('paintCanvas');
+                    const ctx = canvas.getContext('2d');
+                    const rect = canvas.getBoundingClientRect();
+                    const x = event.clientX - rect.left;
+                    const y = event.clientY - rect.top;
+                    const data = ctx.getImageData(x, y, 1, 1).data;
+                    const r = data[0];
+                    const g = data[1];
+                    const b = data[2];
+                    this.currentColor = `rgb(${r}, ${g}, ${b})`;
+                    const hsl = this.rgbToHsl(r, g, b);
+                    this.hue = hsl.h;
+                    this.saturation = hsl.s;
+                    this.brightness = hsl.l;
+                    this.updateColorInputs();
+
+                    // Reopen the color picker modal with the selected color
+                    this.pickingCustomColor = false;
+                    this.showColorPicker = true;
+                },
+                pickColorFromWheel(event) {
+                    this.updateColorFromPosition(event);
+                },
+                startColorDrag(event) {
+                    event.preventDefault(); // Prevent unwanted text selection
+                    this.isColorDragging = true;
+                    this.updateColorFromPosition(event);
+                },
+
+                dragColor(event) {
+                    event.preventDefault(); // Prevent unwanted text selection
+                    if (!this.isColorDragging) return;
+                    this.updateColorFromPosition(event);
+                },
+
+                stopColorDrag(event) {
+                    event.preventDefault(); // Prevent unwanted text selection
+                    this.isColorDragging = false;
+                },
+
+                updateColorFromPosition(event) {
+                    const canvas = document.getElementById('colorWheel');
+                    const rect = canvas.getBoundingClientRect();
+                    
+                    // Calculate position relative to canvas
+                    let x = event.clientX - rect.left;
+                    let y = event.clientY - rect.top;
+                    
+                    // Get center and radius of wheel
+                    const centerX = canvas.width / 2;
+                    const centerY = canvas.height / 2;
+                    const radius = canvas.width / 2;
+                    const innerRadius = radius * 0.6;
+                    
+                    // Calculate distance from center
+                    const dx = x - centerX;
+                    const dy = centerY - y; // Invert Y coordinate
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // Only process if within the donut shape
+                    if (distance <= radius && distance >= innerRadius) {
+                        const ctx = canvas.getContext('2d');
+                        // Need to scale the coordinates if canvas display size differs from its internal size
+                        const scaleX = canvas.width / canvas.offsetWidth;
+                        const scaleY = canvas.height / canvas.offsetHeight;
+                        const pixelX = Math.floor(x * scaleX);
+                        const pixelY = Math.floor(y * scaleY);
+                        
+                        const data = ctx.getImageData(pixelX, pixelY, 1, 1).data;
+                        const r = data[0];
+                        const g = data[1];
+                        const b = data[2];
+                        
+                        // Update color
+                        this.currentColor = `rgb(${r}, ${g}, ${b})`;
+                        const hsl = this.rgbToHsl(r, g, b);
+                        this.hue = hsl.h;
+                        this.saturation = hsl.s;
+                        this.brightness = hsl.l;
+                        
+                        this.updateColorInputs();
+                    }
+                },
+                addToColorHistory(color) {
+                    if (!this.colorHistory.includes(color)) {
+                        this.colorHistory.push(color);
+                        if (this.colorHistory.length > 10) {
+                            this.colorHistory.shift();
+                        }
+                    }
+                },
+                removeColor(index) {
+                    this.colorHistory.splice(index, 1);
+                    if (this.colorHistory.length > 0) {
+                        this.currentColor = this.colorHistory[this.colorHistory.length - 1]; // Set to last color in history
+                    } else {
+                        this.currentColor = '#000000'; // Default to black if no colors remain
+                    }
+                },
+                validateColorInput() {
+                    const format = this.colorFormats[this.currentFormatIndex];
+                    let validInput = this.currentColorInput.trim();
+                    let errorMessage = null;
+
+                    switch (format) {
+                        case 'HEX':
+                            validInput = validInput.replace(/[^0-9a-fA-F]/g, '');
+                            if (validInput.length !== 6) {
+                                errorMessage = "HEX format requires exactly 6 characters (e.g., RRGGBB).";
+                            }
+                            break;
+                        case 'RGB':
+                            validInput = validInput.replace(/[^0-9, ]/g, '');
+                            const rgbMatch = validInput.match(/^(\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})$/);
+                            if (!rgbMatch) {
+                                errorMessage = "RGB format requires three numbers separated by commas (e.g., 255, 255, 255).";
+                            } else if (rgbMatch.slice(1).some(val => val < 0 || val > 255)) {
+                                errorMessage = "Each RGB value must be between 0 and 255.";
+                            }
+                            break;
+                        case 'HSL':
+                            validInput = validInput.replace(/[^0-9%, ]/g, '');
+                            const hslMatch = validInput.match(/^(\d{1,3}),\s*(\d{1,3})%,\s*(\d{1,3})%$/);
+                            if (!hslMatch) {
+                                errorMessage = "HSL format requires three values: H (0-360), S% (0-100%), L% (0-100%) (e.g., 360, 100%, 100%).";
+                            } else if (hslMatch[1] < 0 || hslMatch[1] > 360) {
+                                errorMessage = "Hue must be between 0 and 360.";
+                            } else if (hslMatch[2] < 0 || hslMatch[2] > 100 || hslMatch[3] < 0 || hslMatch[3] > 100) {
+                                errorMessage = "Saturation and Lightness must be between 0% and 100%.";
+                            }
+                            break;
+                    }
+
+                    // Update the input and error message
+                    this.currentColorInput = validInput;
+                    this.colorError = errorMessage;
+                },
+                printCanvas() {
+                    // Store current selection state
+                    const wasSelected = this.selectedShape;
+                    
+                    // Clear selection temporarily
+                    this.selectedShape = null;
+                    this.clearSelectionBox();
+                    this.redrawCanvas();
+
+                    const canvas = document.getElementById('paintCanvas');
+                    const printWindow = window.open('', '_blank');
+                    
+                    printWindow.document.write(`
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <title>Print Canvas</title>
+                            <style>
+                                body { margin: 0; padding: 0; }
+                                canvas { display: block; }
+                            </style>
+                        </head>
+                        <body>
+                            <canvas id="printCanvas" width="${canvas.width}" height="${canvas.height}"></canvas>
+                        </body>
+                        </html>
+                    `);
+                    printWindow.document.close();
+                    const printCanvas = printWindow.document.getElementById('printCanvas');
+                    const printCtx = printCanvas.getContext('2d');
+                    printCtx.drawImage(canvas, 0, 0);
+
+                    // Trigger printing
+                    printWindow.focus();
+                    printWindow.print();
+                    printWindow.close();
+
+                    // Restore selection
+                    this.selectedShape = wasSelected;
+                    this.redrawCanvas();
+                },
+                handleKeydown(event) {
+                    if (event.ctrlKey && event.key === 'z') {
+                        // Ctrl + Z for undo
+                        this.undo();
+                        event.preventDefault(); // Prevent default browser action
+                    } else if (event.ctrlKey && event.key === 'y') {
+                        // Ctrl + Y for redo
+                        this.redo();
+                        event.preventDefault(); // Prevent default browser action
+                    } else if (event.key === 'Delete' && this.selectedShape) {
+                        this.deleteSelectedShape();
+                        event.preventDefault();
+                    }
+                },
+                restoreCanvasFromHistory() {
+                    const canvas = document.getElementById('paintCanvas');
+                    const ctx = canvas.getContext('2d');
+                    const state = this.history[this.historyIndex];
+
+                    if (state) {
+                        const img = new Image();
+                        img.onload = () => {
+                            ctx.drawImage(img, 0, 0);
+                        };
+                        img.src = state.canvas;
+                    }
+                },
+                drawSelectionBox() {
+                    if (!this.selectedShape) return;
+                    const canvas = document.getElementById('paintCanvas');
+                    const ctx = canvas.getContext('2d');
+                    const { x, y, width, height } = this.selectedShape;
+
+                    // Draw selection border
+                    ctx.strokeStyle = '#1a73e8';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x, y, width, height);
+
+                    // Remove any existing handles
+                    const existingHandles = document.querySelectorAll('.resize-handle');
+                    existingHandles.forEach(handle => handle.remove());
+
+                    // Get handle container
+                    let handleContainer = document.querySelector('.handle-container');
+                    if (!handleContainer) {
+                        handleContainer = document.createElement('div');
+                        handleContainer.className = 'handle-container';
+                        canvas.parentElement.appendChild(handleContainer);
+                    }
+
+                    // Define handle positions
+                    const handles = [
+                        { left: x, top: y, type: 'top-left' },
+                        { left: x + width, top: y, type: 'top-right' },
+                        { left: x, top: y + height, type: 'bottom-left' },
+                        { left: x + width, top: y + height, type: 'bottom-right' }
+                    ];
+
+                    // Create and position handle buttons
+                    handles.forEach(handle => {
+                        const button = document.createElement('button');
+                        button.className = 'resize-handle';
+                        button.dataset.type = handle.type;
+                        button.style.position = 'absolute';
+                        button.style.left = handle.left + 'px';
+                        button.style.top = handle.top + 'px';
+                        button.style.width = '10px';
+                        button.style.height = '10px';
+                        button.style.background = 'white';
+                        button.style.border = '2px solid #1a73e8';
+                        button.style.borderRadius = '50%';
+                        button.style.cursor = 'pointer';
+                        button.style.zIndex = '1000';
+
+                        button.addEventListener('mousedown', (e) => {
+                            e.stopPropagation();
+                            this.isResizing = true;
+                            this.resizeHandle = handle.type;
+                            this.resizeStartX = e.clientX;
+                            this.resizeStartY = e.clientY;
+                            this.initialShapeDimensions = {
+                                x: this.selectedShape.x,
+                                y: this.selectedShape.y,
+                                width: this.selectedShape.width,
+                                height: this.selectedShape.height
+                            };
+                        });
+
+                        handleContainer.appendChild(button);
+                    });
+                },
+                handleMouseMove(event) {
+                    const x = event.offsetX;
+                    const y = event.offsetY;
+                    const canvas = document.getElementById('paintCanvas');
+                    const handleSize = 10;
+
+                    // Check if the mouse is over any resize handle
+                    const isOverHandle = this.resizeHandles.some(handle => {
+                        return x >= handle.x && x <= handle.x + handleSize && y >= handle.y && y <= handle.y + handleSize;
+                    });
+
+                    // Change cursor if over a handle
+                    if (isOverHandle) {
+                        canvas.style.cursor = 'url("https://www.svgrepo.com/show/149528/double-arrow.svg"), auto';
+                    } else {
+                        canvas.style.cursor = 'default';
+                    }
+                },
+                startResize(event) {
+                    if (this.mode !== 'shape' || !this.selectedShape) return;
+                    const x = event.offsetX;
+                    const y = event.offsetY;
+                    const { x: sx, y: sy, width, height } = this.selectedShape;
+                    const handleSize = 10;
+                    const borderWidth = 1; // Width of the black border
+
+                    // Check if click is within handle boundaries including border
+                    const isInHandle = (clickX, clickY, handleX, handleY) => {
+                        return clickX >= handleX - borderWidth && 
+                               clickX <= handleX + handleSize + borderWidth && 
+                               clickY >= handleY - borderWidth && 
+                               clickY <= handleY + handleSize + borderWidth;
+                    };
+
+                    // Define handle positions with correct offsets
+                    const handles = [
+                        { pos: [sx - handleSize/2, sy - handleSize/2], type: 'top-left' },
+                        { pos: [sx + width - handleSize/2, sy - handleSize/2], type: 'top-right' },
+                        { pos: [sx - handleSize/2, sy + height - handleSize/2], type: 'bottom-left' },
+                        { pos: [sx + width - handleSize/2, sy + height - handleSize/2], type: 'bottom-right' },
+                        { pos: [sx + width/2 - handleSize/2, sy - handleSize/2], type: 'top-middle' },
+                        { pos: [sx + width/2 - handleSize/2, sy + height - handleSize/2], type: 'bottom-middle' },
+                        { pos: [sx - handleSize/2, sy + height/2 - handleSize/2], type: 'left-middle' },
+                        { pos: [sx + width - handleSize/2, sy + height/2 - handleSize/2], type: 'right-middle' }
+                    ];
+
+                    // Check each handle
+                    for (const handle of handles) {
+                        if (isInHandle(x, y, handle.pos[0], handle.pos[1])) {
+                            this.isResizing = true;
+                            this.resizeHandle = handle.type;
+                            this.resizeStartX = x;
+                            this.resizeStartY = y;
+                            this.initialShapeDimensions = {
+                                x: sx,
+                                y: sy,
+                                width: width,
+                                height: height
+                            };
+                            break;
+                        }
+                    }
+                },
+                resizeShape(event) {
+                    if (!this.isResizing || !this.selectedShape) return;
+                    
+                    // Calculate the change in mouse position
+                    const deltaX = event.clientX - this.resizeStartX;
+                    const deltaY = event.clientY - this.resizeStartY;
+                    const { x: initialX, y: initialY, width: initialWidth, height: initialHeight } = this.initialShapeDimensions;
+
+                    // Calculate new dimensions based on initial state and delta
+                    let newX = initialX;
+                    let newY = initialY;
+                    let newWidth = initialWidth;
+                    let newHeight = initialHeight;
+
+                    switch (this.resizeHandle) {
+                        case 'top-left':
+                            newX = initialX + deltaX;
+                            newY = initialY + deltaY;
+                            newWidth = initialWidth - deltaX;
+                            newHeight = initialHeight - deltaY;
+                            break;
+                        case 'top-right':
+                            newY = initialY + deltaY;
+                            newWidth = initialWidth + deltaX;
+                            newHeight = initialHeight - deltaY;
+                            break;
+                        case 'bottom-left':
+                            newX = initialX + deltaX;
+                            newWidth = initialWidth - deltaX;
+                            newHeight = initialHeight + deltaY;
+                            break;
+                        case 'bottom-right':
+                            newWidth = initialWidth + deltaX;
+                            newHeight = initialHeight + deltaY;
+                            break;
+                    }
+
+                    // Prevent negative dimensions with a minimum size
+                    const minSize = 1;
+                    if (newWidth >= minSize) {
+                        this.selectedShape.x = newX;
+                        this.selectedShape.width = newWidth;
+                    }
+                    if (newHeight >= minSize) {
+                        this.selectedShape.y = newY;
+                        this.selectedShape.height = newHeight;
+                    }
+                    
+                    this.redrawCanvas();
+                },
+                stopResize() {
+                    if (this.isResizing) {
+                        this.saveState();
+                        this.isResizing = false;
+                        this.resizeHandle = null;
+                    }
+                },
+                isClickingShape(x, y) {
+                    return this.findShapeAtPosition(x, y) !== null;
+                },
+                findShapeAtPosition(x, y) {
+                    // Improve shape detection for circles
+                    for (let i = this.shapes.length - 1; i >= 0; i--) {
+                        const shape = this.shapes[i];
+                        if (shape.type === 'circle') {
+                            const centerX = shape.x + shape.width / 2;
+                            const centerY = shape.y + shape.height / 2;
+                            const radius = shape.width / 2;
+                            const distance = Math.sqrt(
+                                Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2)
+                            );
+                            if (distance <= radius) return shape;
+                        } else {
+                            if (x >= shape.x && 
+                                x <= shape.x + shape.width && 
+                                y >= shape.y && 
+                                y <= shape.y + shape.height) {
+                                return shape;
+                            }
+                        }
+                    }
+                    return null;
+                },
+                clearSelection() {
+                    this.selectedShape = null;
+                    this.isDragging = false;
+                    this.isResizing = false;
+                    this.clearSelectionBox();
+                    this.redrawCanvas();
+                },
+                clearSelectionBox() {
+                    // Remove all resize handles
+                    const existingElements = document.querySelectorAll('.resize-handle');
+                    existingElements.forEach(element => element.remove());
+                    
+                    // Clear the handle container if it exists
+                    const handleContainer = document.querySelector('.handle-container');
+                    if (handleContainer) {
+                        handleContainer.innerHTML = '';
+                    }
+                },
+                deleteSelectedShape() {
+                    if (this.selectedShape) {
+                        if (this.mode === 'image') {
+                            const index = this.images.indexOf(this.selectedShape);
+                            if (index > -1) {
+                                this.images.splice(index, 1);
+                            }
+                        } else {
+                            const index = this.shapes.indexOf(this.selectedShape);
+                            if (index > -1) {
+                                this.shapes.splice(index, 1);
+                            }
+                        }
+                        this.clearSelection();
+                        this.saveState(); // Save state after deletion
+                    }
+                },
+                closeColorPicker() {
+                    this.isColorPickerClosing = true;
+                    setTimeout(() => {
+                        this.showColorPicker = false;
+                        this.isColorPickerClosing = false;
+                        this.addToColorHistory(this.currentColor);
+                    }, 200);
+                },
+                closeKeybinds() {
+                    this.isKeybindsClosing = true;
+                    setTimeout(() => {
+                        this.showKeybinds = false;
+                        this.isKeybindsClosing = false;
+                    }, 200);
+                },
+                customAction1() {
+                    alert('Custom Action 1 triggered');
+                },
+                customAction2() {
+                    alert('Custom Action 2 triggered');
+                },
+                customAction3() {
+                    alert('Custom Action 3 triggered');
+                },
+                viewLogs() {
+                    this.showLogs = true;
+                },
+                closeLogs() {
+                    this.showLogs = false;
+                },
+                logMessage(message) {
+                    const date = new Date().toLocaleString(); // Get current date and time
+                    const committedBy = this.currentUser || 'Guest'; // Use currentUser or 'Guest' if not logged in
+                    const logEntry = `[${date}] ${message} (Committed by: ${committedBy})`;
+                    this.logs.push(logEntry);
+                    if (this.logs.length > 100) { // Limit the number of logs stored
+                        this.logs.shift();
+                    }
+                },
+                // Example usage of logMessage
+                someMethod() {
+                    this.logMessage("Some action was performed");
+                    // ... other code ...
+                },
+                navigateTo(page) {
+                    this.currentPage = page;
+                },
+                toggleDropdown(type) {
+                    this.dropdownOpen[type] = !this.dropdownOpen[type];
+                },
+                selectOption(type, value) {
+                    this[type] = value;
+                    this.dropdownOpen[type] = false;
+                }
+            },
+            mounted() {
+                auth.onAuthStateChanged((user) => {
+                    this.isLoggedIn = !!user;
+                });
+
+                const canvas = document.getElementById('paintCanvas');
+                
+                // Remove duplicate event listeners and simplify the logic
+                canvas.addEventListener('mousedown', (e) => {
+                    const clickedShape = this.findShapeAtPosition(e.offsetX, e.offsetY);
+                    if (clickedShape) {
+                        this.selectShape(e);
+                    } else {
+                        this.clearSelection();
+                        this.startDrawing(e);
+                    }
+                });
+
+                canvas.addEventListener('mousemove', (e) => {
+                    if (this.isDragging && this.selectedShape) {
+                        this.dragShape(e);
+                    } else if (this.isDrawing) {
+                        this.draw(e);
+                    }
+                });
+
+                document.addEventListener('mouseup', (e) => {
+                    if (this.isDragging) {
+                        this.stopDragging(e);
+                    }
+                    if (this.isDrawing) {
+                        this.stopDrawing(e);
+                    }
+                });
+
+                // Handle mouse leaving the window
+                document.addEventListener('mouseleave', (e) => {
+                    if (this.isDragging) {
+                        this.stopDragging(e);
+                    }
+                    if (this.isDrawing) {
+                        this.stopDrawing(e);
+                    }
+                });
+
+                this.prevX = 0;
+                this.prevY = 0;
+                this.drawColorWheel();
+                this.redrawCanvas();
+
+                // Initialize the history with the initial blank state
+                this.saveState();
+                
+                // Add event listeners for keyboard shortcuts
+                document.addEventListener('keydown', this.handleKeydown);
+
+                // Add global mouse event listeners for resize
+                document.addEventListener('mousemove', (e) => {
+                    if (this.isResizing && this.selectedShape) {
+                        this.resizeShape(e);
+                    }
+                });
+
+                document.addEventListener('mouseup', () => {
+                    if (this.isResizing) {
+                        this.stopResize();
+                    }
+                });
+
+                // Add global mouse up handler
+                document.addEventListener('mouseup', this.stopColorDrag);
+
+                document.addEventListener('contextmenu', function(event) {
+                    event.preventDefault();
+                    const menu = document.getElementById('customMenu');
+                    if (menu) {
+                        menu.style.display = 'block';
+                        menu.style.left = `${event.pageX}px`;
+                        menu.style.top = `${event.pageY}px`;
+                    }
+                });
+
+                document.addEventListener('click', function() {
+                    const menu = document.getElementById('customMenu');
+                    if (menu) {
+                        menu.style.display = 'none';
+                    }
+                });
+
+                // Override console.log to capture logs
+                const originalConsoleLog = console.log;
+                console.log = (...args) => {
+                    this.logMessage(args.join(' '));
+                    originalConsoleLog.apply(console, args);
+                };
+            },
+            beforeDestroy() {
+                // Remove event listeners when the component is destroyed
+                document.removeEventListener('keydown', this.handleKeydown);
+                const canvas = document.getElementById('paintCanvas');
+                canvas.removeEventListener('mousemove', this.handleMouseMove);
+
+                // Remove global mouse up handler
+                document.removeEventListener('mouseup', this.stopColorDrag);
+            }
+        });
+
+        // Disable right-click context menu
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
+        // Disable certain key combinations
+        document.addEventListener('keydown', function(event) {
+            if (event.ctrlKey && (event.key === 'u' || event.key === 's' || event.key === 'i' || event.key === 'j')) {
+                event.preventDefault();
+            }
+            if (event.key === 'F12') {
+                event.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>

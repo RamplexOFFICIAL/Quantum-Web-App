@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Projects</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@2.33.0/dist/full.css" rel="stylesheet" type="text/css" />
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        .select option {
+            padding: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .select option img {
+            width: 1.5rem;
+            height: 1.5rem;
+            vertical-align: middle;
+        }
+        
+        .modal-box {
+            transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+        }
+
+        .modal-closing .modal-box {
+            transform: scale(0.95);
+            opacity: 0;
+        }
+
+        .modal {
+            transition: opacity 0.2s ease-out;
+        }
+
+        .modal-closing.modal {
+            opacity: 0;
+        }
+    </style>
+</head>
+<body class="bg-base-200">
+    <header class="bg-base-100 shadow-lg">
+        <div class="container mx-auto py-4 flex justify-between items-center">
+          <h1 class="text-2xl font-bold">Quantum Projects</h1>
+        </div>
+    </header>
+    <div class="fixed bottom-4 right-4 z-50">
+        <label for="bug-modal" class="btn btn-circle btn-error">
+            <i class="fas fa-bug"></i>
+        </label>
+    </div>
+
+    <!-- Bug Report Modal -->
+    <input type="checkbox" id="bug-modal" class="modal-toggle" />
+    <div class="modal">
+        <div class="modal-box relative">
+            <label for="bug-modal" class="btn btn-sm btn-circle absolute right-2 top-2 btn-ghost">✕</label>
+            <h3 class="text-lg font-bold mb-4">Report a Bug</h3>
+            <form id="bugReportForm" onsubmit="submitBugReport(event)">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Project</span>
+                    </label>
+                    <div class="relative">
+                        <div class="input-bordered w-full flex items-center justify-between cursor-pointer p-3 rounded-lg border" onclick="toggleProjectDropdown()">
+                            <span id="selectedProject">Select a project</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div id="projectDropdown" class="absolute top-full left-0 right-0 mt-2 bg-base-100 rounded-lg shadow-xl z-50 hidden">
+                            <div class="p-2">
+                                <div class="option hover:bg-base-200 p-3 rounded-lg cursor-pointer" onclick="selectProject('quantum-paint', 'Quantum Paint')">
+                                    <div class="flex items-center gap-3">
+                                        <img src="https://i.ibb.co/WB78JdM/paint.png" 
+                                             alt="Paint Icon" 
+                                             class="w-6 h-6 filter invert opacity-90">
+                                        <span>Quantum Paint</span>
+                                    </div>
+                                </div>
+                                <div class="option hover:bg-base-200 p-3 rounded-lg cursor-pointer" onclick="selectProject('quantum-ai', 'Quantum AI')">
+                                    <div class="flex items-center gap-3">
+                                        <img src="https://i.ibb.co/r5tjRn8/ai-solid-svgrepo-com.png" 
+                                             alt="AI Icon" 
+                                             class="w-6 h-6 filter invert opacity-90">
+                                        <span>Quantum AI</span>
+                                    </div>
+                                </div>
+                                <div class="option hover:bg-base-200 p-3 rounded-lg cursor-pointer" onclick="selectProject('quantum-calculator', 'Quantum Calculator')">
+                                    <div class="flex items-center gap-3">
+                                        <img src="https://creazilla-store.fra1.digitaloceanspaces.com/icons/3196558/calculator-icon-md.png" 
+                                             alt="Calculator Icon" 
+                                             class="w-6 h-6 filter invert opacity-90">
+                                        <span>Quantum Calculator</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" name="project" id="projectInput" required>
+                    </div>
+                </div>
+                <div class="form-control mt-4">
+                    <label class="label">
+                        <span class="label-text">Description</span>
+                    </label>
+                    <textarea class="textarea textarea-bordered h-24" placeholder="Describe the bug..." required></textarea>
+                </div>
+                <div class="modal-action">
+                    <button type="submit" class="btn btn-primary">Submit Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="container mx-auto p-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <a href="Quantum-AI.html" class="card w-full bg-base-100 shadow-xl hover:scale-105 transition-transform duration-300 ease-in-out">
+                <figure class="px-10 pt-10 h-48 flex items-center justify-center">
+                    <img src="https://i.ibb.co/r5tjRn8/ai-solid-svgrepo-com.png" 
+                         alt="AI Icon" 
+                         class="rounded-xl w-32 h-32 filter invert"
+                         style="opacity: 0.9;">
+                </figure>
+                <div class="card-body items-center text-center">
+                    <h2 class="card-title">Quantum AI</h2>
+                    <p>Dive into artificial intelligence with Quantum AI.</p>
+                </div>
+            </a>
+            <a href="Quantum-Paint.html" class="card w-full bg-base-100 shadow-xl hover:scale-105 transition-transform duration-300 ease-in-out">
+                <figure class="px-10 pt-10 h-48 flex items-center justify-center">
+                    <img src="https://i.ibb.co/WB78JdM/paint.png" 
+                         alt="Paint Icon" 
+                         class="rounded-xl w-32 h-32 filter invert"
+                         style="opacity: 0.9;">
+                </figure>
+                <div class="card-body items-center text-center">
+                    <h2 class="card-title">Quantum Paint</h2>
+                    <p>Explore the world of digital painting with Quantum Paint.</p>
+                </div>
+            </a>
+            <a href="Quantum-Calculator.html" class="card w-full bg-base-100 shadow-xl hover:scale-105 transition-transform duration-300 ease-in-out">
+                <figure class="px-10 pt-10 h-48 flex items-center justify-center">
+                    <img src="https://creazilla-store.fra1.digitaloceanspaces.com/icons/3196558/calculator-icon-md.png" 
+                         alt="Calculator Icon" 
+                         class="rounded-xl w-32 h-32 filter invert"
+                         style="opacity: 0.9;">
+                </figure>
+                <div class="card-body items-center text-center">
+                    <h2 class="card-title">Quantum Calculator</h2>
+                    <p>Perform complex calculations with Quantum Calculator.</p>
+                </div>
+            </a>
+        </div>
+    </div>
+    <script>
+        function handleResize() {
+            const body = document.body;
+            const html = document.documentElement;
+            const height = Math.max(body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight, html.offsetHeight);
+            body.style.height = `${height}px`;
+        }
+        window.addEventListener('resize', handleResize);
+        handleResize();
+
+        function toggleProjectDropdown() {
+            const dropdown = document.getElementById('projectDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+
+        function selectProject(value, text) {
+            document.getElementById('selectedProject').textContent = text;
+            document.getElementById('projectInput').value = value;
+            toggleProjectDropdown();
+        }
+
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('projectDropdown');
+            const clickedElement = event.target.closest('.input-bordered');
+            if (!clickedElement && !event.target.closest('#projectDropdown') && !dropdown.classList.contains('hidden')) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        function submitBugReport(event) {
+            event.preventDefault();
+            const form = event.target;
+            const project = form.querySelector('#projectInput').value;
+            const description = form.querySelector('textarea').value;
+
+            if (!project) {
+                alert('Please select a project');
+                return;
+            }
+
+            // Create mailto link with bug report details
+            const subject = `Bug Report: ${project}`;
+            const body = `Project: ${project}\n\nDescription: ${description}`;
+            const mailtoLink = `mailto:ramplexpeace@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            
+            // Open email client
+            window.location.href = mailtoLink;
+
+            // Close modal and reset form
+            form.reset();
+            document.getElementById('bug-modal').checked = false;
+            document.getElementById('selectedProject').textContent = 'Select a project';
+        }
+
+        document.querySelector('label[for="bug-modal"]').addEventListener('click', function(e) {
+            const modal = document.querySelector('.modal');
+            modal.classList.add('modal-closing');
+            
+            // Small delay to allow animation to complete before the modal is hidden
+            setTimeout(() => {
+                modal.classList.remove('modal-closing');
+            }, 200);
+        });
+    </script>
+</body>
+</html>

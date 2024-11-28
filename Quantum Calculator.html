@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum AI Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+            </div>
+        </div>
+    </div>
+</body>
+</html>    <title>Quantum AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@2.33.0/dist/full.css" rel="stylesheet" type="text/css" />
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/emailjs-com@2.3.2/dist/email.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.0.0/math.min.js"></script>
+    <style>
+      /* Updated Calculator Styles */
+      .calculator-container {
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        padding: 20px;
+        background-color: #1a1a1a; /* Darker gray background */
+        border: 2px solid #2c3e50; /* Border color matching Quantum theme */
+        border-radius: 10px; /* Rounded corners */
+        transition: background-color 0.3s, border-color 0.3s;
+        width: 100%; /* Full viewport width */
+        max-width: 100%; /* Ensure it doesn't exceed the viewport */
+        margin: 0;
+        box-sizing: border-box; /* Include padding and border in width and height */
+        gap: 1rem; /* Adds spacing between all direct children */
+        scrollbar-color: #2c3e50 #1a1a1a; /* Dark blue thumb, dark gray track */
+      }
+      .calculator-display {
+        background-color: #2c3e50; /* Dark blue background */
+        color: white;
+        padding: 1.25rem; /* Padding in rem */
+        font-size: 3em; /* Increased font size */
+        margin-bottom: 1.25rem; /* Margin in rem */
+        text-align: right;
+        border-radius: 5px; /* Rounded corners for display */
+        transition: background-color 0.3s, color 0.3s;
+        animation: fadeIn 0.5s ease-in-out; /* Text animation */
+        box-sizing: border-box; /* Include padding and border in width and height */
+      }
+      .calculator-buttons {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-gap: 0.625rem; /* Gap in rem */
+        flex-grow: 1; /* Allow buttons to grow and fill space */
+        margin-bottom: 1rem; /* Additional spacing after the calculator buttons */
+      }
+      .calculator-button {
+        background-color: #333; /* Dark gray button background */
+        border: 1px solid #555;
+        padding: 1.25rem; /* Padding in rem */
+        font-size: 1.5em; /* Increased font size */
+        cursor: pointer;
+        border-radius: 5px; /* Rounded corners for buttons */
+        transition: background-color 0.2s, transform 0.2s;
+        color: white;
+        box-sizing: border-box; /* Include padding and border in width and height */
+        position: relative; /* Position relative for tooltip positioning */
+      }
+      .calculator-button:hover {
+        background-color: #444;
+        transform: scale(1.05);
+      }
+      .calculator-button:active {
+        transform: scale(0.95);
+      }
+      .calculator-button.operator {
+        background-color: #ff9800; /* Orange for operators */
+        color: white;
+      }
+      .calculator-button.equal {
+        background-color: #4caf50; /* Green for equals */
+        color: white;
+      }
+      .calculator-button.clear {
+        background-color: #f44336; /* Red for clear */
+        color: white;
+      }
+
+      /* Text Fade-In Animation */
+      @keyframes fadeIn {
+        0% {
+          opacity: 0;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      /* Other Animations */
+      .modal-shrink .modal-box {
+        animation: shrink 0.3s ease-in forwards;
+      }
+
+      @keyframes shrink {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+      }
+
+      @keyframes grow {
+        0% {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      .modal-grow .modal-box {
+        animation: grow 0.3s ease-out forwards;
+      }
+
+      /* Media Queries for Responsiveness */
+      @media (max-width: 1200px) {
+        .calculator-container {
+          max-width: 1000px;
+        }
+      }
+
+      @media (max-width: 992px) {
+        .calculator-container {
+          max-width: 800px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .calculator-container {
+          max-width: 600px;
+        }
+      }
+
+      @media (max-width: 576px) {
+        .calculator-container {
+          width: 100%;
+          max-width: 100%;
+        }
+      }
+
+      .calculator-button::after {
+        content: none; /* Disable the pseudo-element tooltip */
+      }
+
+      .tooltip {
+        position: absolute;
+        background-color: #333;
+        color: #fff;
+        padding: 5px;
+        border-radius: 5px;
+        white-space: nowrap;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s;
+        z-index: 1000; /* Ensure tooltip is on top */
+        pointer-events: none; /* Prevent tooltip from interfering with mouse events */
+      }
+
+      /* Add this CSS for the lightbox styling */
+      .exponent-modal {
+          position: fixed;
+          bottom: 10px;
+          right: 10px;
+          background-color: #fff;
+          border: 1px solid #ccc;
+          border-radius: 5px;
+          box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+          padding: 20px;
+          z-index: 1001;
+          animation: slideIn 0.3s ease-out;
+          pointer-events: auto !important; /* Ensure modal stays interactive */
+          opacity: 1 !important; /* Ensure modal stays visible */
+      }
+
+      @keyframes slideIn {
+          from {
+              transform: translateY(100%);
+              opacity: 0;
+          }
+          to {
+              transform: translateY(0);
+              opacity: 1;
+          }
+      }
+
+      .pointer-events-none {
+          pointer-events: none;
+          opacity: 0.7;
+      }
+
+      /* Modal Animations */
+      .modal-box {
+          transition: transform 0.3s ease-out;
+      }
+
+      .modal-grow {
+          animation: grow 0.3s ease-out forwards;
+      }
+
+      .modal-shrink {
+          animation: shrink 0.3s ease-in forwards;
+      }
+
+      .modal-closing {
+          animation: fadeOut 0.3s ease-in forwards;
+      }
+
+      @keyframes grow {
+          0% { transform: scale(0.8); }
+          100% { transform: scale(1); }
+      }
+
+      @keyframes shrink {
+          0% { transform: scale(1); }
+          100% { transform: scale(0.8); }
+      }
+
+      @keyframes fadeOut {
+          0% { opacity: 1; }
+          100% { opacity: 0; }
+      }
+
+      /* Remove any conflicting modal styles from DaisyUI */
+      .modal {
+          transition: opacity 0.3s ease-out;
+      }
+
+      .modal-box {
+          transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+      }
+
+      /* Add to your existing style section */
+      input[type="number"]::-webkit-inner-spin-button,
+      input[type="number"]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+      }
+
+      input[type="number"] {
+          -moz-appearance: textfield;
+      }
+
+      /* Add spacing and styling for the Show Keybinds button */
+      .calculator-container {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem; /* Adds spacing between all direct children */
+      }
+
+      .calculator-buttons {
+          margin-bottom: 1rem; /* Additional spacing after the calculator buttons */
+      }
+
+      /* Optional: Special styling for the Show Keybinds button */
+      .calculator-button.mt-6 {
+          margin-top: 1.5rem;
+          padding: 0.75rem;
+          font-size: 1.1em;
+          background-color: #3b82f6; /* Blue color */
+          transition: background-color 0.2s;
+      }
+
+      .calculator-button.mt-6:hover {
+          background-color: #2563eb;
+      }
+
+      /* Improved Show Keybinds button styling */
+      .keybinds-button {
+          margin-top: 2rem;
+          padding: 0.875rem 1.5rem;
+          width: 100%;
+          font-size: 1.1em;
+          font-weight: 600;
+          color: #fff;
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+          border: none;
+          border-radius: 8px;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+                      0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          transition: all 0.3s ease;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          overflow: hidden;
+      }
+
+      .keybinds-button:hover {
+          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15), 
+                      0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+
+      .keybinds-button:active {
+          transform: translateY(0);
+          box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1), 
+                      0 1px 2px -1px rgba(0, 0, 0, 0.06);
+      }
+
+      .keybinds-button i {
+          font-size: 1.2em;
+          transition: transform 0.3s ease;
+      }
+
+      .keybinds-button:hover i {
+          transform: scale(1.1);
+      }
+
+      /* Optional: Add a subtle pulse animation */
+      @keyframes subtle-pulse {
+          0% { box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1); }
+          50% { box-shadow: 0 4px 12px -1px rgba(59, 130, 246, 0.2); }
+          100% { box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1); }
+      }
+
+      .keybinds-button {
+          animation: subtle-pulse 2s infinite;
+      }
+
+      /* Dark mode support */
+      @media (prefers-color-scheme: dark) {
+          .keybinds-button {
+              background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+          }
+          
+          .keybinds-button:hover {
+              background: linear-gradient(135deg, #4338ca 0%, #312e81 100%);
+          }
+      }
+
+      /* Custom scrollbar styles */
+      .calculator-container::-webkit-scrollbar {
+        width: 12px; /* Width of the scrollbar */
+      }
+
+      .calculator-container::-webkit-scrollbar-track {
+        background: #1a1a1a; /* Dark gray track */
+        border-radius: 10px; /* Rounded corners for the track */
+        box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.3); /* Inner shadow for depth */
+      }
+
+      .calculator-container::-webkit-scrollbar-thumb {
+        background-color: #2c3e50; /* Dark blue thumb */
+        border-radius: 10px; /* Rounded corners for the thumb */
+        border: 3px solid #1a1a1a; /* Matches the track color */
+        box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5); /* Inner shadow for depth */
+      }
+
+      .calculator-container::-webkit-scrollbar-thumb:hover {
+        background-color: #34495e; /* Slightly lighter blue on hover */
+      }
+
+      .calculator-container::-webkit-scrollbar-thumb:active {
+        background-color: #1a252f; /* Darker blue when active */
+      }
+
+      /* Custom page scrollbar styles */
+      body::-webkit-scrollbar {
+        width: 12px; /* Width of the scrollbar */
+      }
+
+      body::-webkit-scrollbar-track {
+        background: #1a1a1a; /* Dark gray track */
+        border-radius: 10px; /* Rounded corners for the track */
+        box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.3); /* Inner shadow for depth */
+      }
+
+      body::-webkit-scrollbar-thumb {
+        background-color: #2c3e50; /* Dark blue thumb */
+        border-radius: 10px; /* Rounded corners for the thumb */
+        border: 3px solid #1a1a1a; /* Matches the track color */
+        box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5); /* Inner shadow for depth */
+      }
+
+      body::-webkit-scrollbar-thumb:hover {
+        background-color: #34495e; /* Slightly lighter blue on hover */
+      }
+
+      body::-webkit-scrollbar-thumb:active {
+        background-color: #1a252f; /* Darker blue when active */
+      }
+
+      /* Custom scrollbar styles for lightboxes */
+      .modal-box::-webkit-scrollbar {
+        width: 12px; /* Width of the scrollbar */
+      }
+
+      .modal-box::-webkit-scrollbar-track {
+        background: #1a1a1a; /* Dark gray track */
+        border-radius: 10px; /* Rounded corners for the track */
+        box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.3); /* Inner shadow for depth */
+      }
+
+      .modal-box::-webkit-scrollbar-thumb {
+        background-color: #2c3e50; /* Dark blue thumb */
+        border-radius: 10px; /* Rounded corners for the thumb */
+        border: 3px solid #1a1a1a; /* Matches the track color */
+        box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5); /* Inner shadow for depth */
+      }
+
+      .modal-box::-webkit-scrollbar-thumb:hover {
+        background-color: #34495e; /* Slightly lighter blue on hover */
+      }
+
+      .modal-box::-webkit-scrollbar-thumb:active {
+        background-color: #1a252f; /* Darker blue when active */
+      }
+    </style>
+</head>
+<body>
+    <!-- This is the best calculator in HTML -->
+    <script>
+        console.log("This is the best calculator in HTML");
+    </script>
+    <div id="app" class="min-h-screen bg-base-200 flex justify-center items-center">
+        <div v-show="showCalculator" class="flex justify-center items-start pt-10 min-h-screen">
+            <div class="card w-full max-w-lg bg-base-200"> <!-- Expanded width -->
+                <div class="card-body">
+                    <div class="calculator-container" :class="{ 'pointer-events-none': showExponentModal }">
+                        <input type="text" class="calculator-display" v-model="display" readonly @focus="enableInput" @blur="disableInput" />
+                        <div class="calculator-buttons">
+                            <!-- Row 1: Clear, Memory, and Basic Operations -->
+                            <button class="calculator-button clear" @click="clearDisplay()">C</button>
+                            <button class="calculator-button" @click="backspace()" data-tooltip="Delete last digit">
+                                <i class="fas fa-backspace"></i>
+                            </button>
+                            <button class="calculator-button" @click="toggleSign()" data-tooltip="Toggle the sign of the current number">±</button>
+                            <button class="calculator-button operator" @click="setOperator('/')" data-tooltip="Division">
+                                <i class="fas fa-divide"></i>
+                            </button>
+
+                            <!-- Row 2: Numbers and Multiplication -->
+                            <button class="calculator-button" @click="appendNumber('7')">7</button>
+                            <button class="calculator-button" @click="appendNumber('8')">8</button>
+                            <button class="calculator-button" @click="appendNumber('9')">9</button>
+                            <button class="calculator-button operator" @click="setOperator('*')" data-tooltip="Multiplication">*</button>
+
+                            <!-- Row 3: Numbers and Subtraction -->
+                            <button class="calculator-button" @click="appendNumber('4')">4</button>
+                            <button class="calculator-button" @click="appendNumber('5')">5</button>
+                            <button class="calculator-button" @click="appendNumber('6')">6</button>
+                            <button class="calculator-button operator" @click="setOperator('-')" data-tooltip="Subtraction">-</button>
+
+                            <!-- Row 4: Numbers and Addition -->
+                            <button class="calculator-button" @click="appendNumber('1')">1</button>
+                            <button class="calculator-button" @click="appendNumber('2')">2</button>
+                            <button class="calculator-button" @click="appendNumber('3')">3</button>
+                            <button class="calculator-button operator" @click="setOperator('+')" data-tooltip="Addition">+</button>
+
+                            <!-- Row 5: Zero, Decimal, and Equals -->
+                            <button class="calculator-button" @click="appendNumber('0')">0</button>
+                            <button class="calculator-button" @click="appendDecimal('.')">.</button>
+                            <button class="calculator-button equal" @click="calculate()">=</button>
+                            <button class="calculator-button" @click="calculatePercentage()" data-tooltip="Calculate percentage">%</button>
+
+                            <!-- Row 6: Memory Operations -->
+                            <button class="calculator-button" @click="storeMemory()" data-tooltip="Store current number in memory">M+</button>
+                            <button class="calculator-button" @click="recallMemory()" data-tooltip="Recall number from memory">MR</button>
+                            <button class="calculator-button" @click="clearMemory()" data-tooltip="Clear memory">MC</button>
+                            <button class="calculator-button" @click="showFractionModal = true" data-tooltip="Enter a fraction">Frac</button>
+
+                            <!-- Row 7: Advanced Math Functions -->
+                            <button class="calculator-button" @click="calculateSquareRoot()" data-tooltip="Calculate Square Root">√</button>
+                            <button class="calculator-button" @click="calculateSquare()" data-tooltip="Square the current number">x²</button>
+                            <button class="calculator-button" @click="calculateInverse()" data-tooltip="Calculate the inverse (1/x)">1/x</button>
+                            <button class="calculator-button" @click="convertToFraction()" data-tooltip="Convert decimal to fraction">a/b</button>
+
+                            <!-- Row 8: Trigonometric Functions -->
+                            <button class="calculator-button" @click="calculateSine()" data-tooltip="Calculate sine (in degrees)">sin</button>
+                            <button class="calculator-button" @click="calculateCosine()" data-tooltip="Calculate cosine (in degrees)">cos</button>
+                            <button class="calculator-button" @click="calculateTangent()" data-tooltip="Calculate tangent (in degrees)">tan</button>
+                            <button class="calculator-button" @click="calculateLogarithm()" data-tooltip="Calculate base-10 logarithm">log</button>
+
+                            <!-- Row 9: Additional Functions -->
+                            <button class="calculator-button" @click="calculateExponent()" data-tooltip="Calculate exponent (e^x)">exp</button>
+                            <button class="calculator-button" @click="evaluateExpression()" data-tooltip="Evaluate the entered expression">Eval</button>
+                            <button class="calculator-button" @click="calculateFactorial()" data-tooltip="Calculate factorial">n!</button>
+                            <button class="calculator-button" @click="openParenthesis()" data-tooltip="Open parenthesis">(</button>
+
+                            <!-- Row 10: Comparison Operators -->
+                            <button class="calculator-button" @click="setOperator('>')" data-tooltip="Greater than">></button>
+                            <button class="calculator-button" @click="setOperator('<')" data-tooltip="Less than"><</button>
+                            <button class="calculator-button" @click="setOperator('>=')" data-tooltip="Greater than or equal to">>=</button>
+                            <button class="calculator-button" @click="closeParenthesis()" data-tooltip="Close parenthesis">)</button>
+
+                            <!-- Row 11: Additional Comparison Operators -->
+                            <button class="calculator-button" @click="setOperator('!=')" data-tooltip="Not equal to">!=</button>
+                            <button class="calculator-button" @click="setOperator('==')" data-tooltip="Equal to">==</button>
+                        </div>
+                        <button class="keybinds-button" @click="toggleKeybindsModal">
+                            <i class="fas fa-keyboard mr-2"></i>
+                            Show Keybinds
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Keybinds Modal - Updated -->
+        <div class="modal modal-bottom sm:modal-middle" 
+             :class="{ 
+                 'modal-open': showKeybindsModal,
+                 'modal-closing': isClosing 
+             }"
+             @click.self="toggleKeybindsModal">
+            <div class="modal-box relative" 
+                 :class="{ 
+                     'modal-grow': showKeybindsModal && !isClosing, 
+                     'modal-shrink': isClosing 
+                 }">
+                <h2 class="text-xl font-bold mb-4">Keybinds</h2>
+                <ul class="list-disc pl-5">
+                    <li>Numbers 0-9: Enter numbers</li>
+                    <li>.: Decimal point</li>
+                    <li>+: Addition</li>
+                    <li>-: Subtraction</li>
+                    <li>*: Multiplication</li>
+                    <li>/: Division</li>
+                    <li>Enter: Calculate</li>
+                    <li>C: Clear display</li>
+                    <li>N: Toggle sign</li>
+                    <li>L: Logarithm</li>
+                    <li>E: Exponent</li>
+                    <li>V: Evaluate Expression</li>
+                    <li>f: Factorial</li>
+                    <li>d: Derivative</li>
+                    <li>i: Integral</li>
+                    <li>m: Mean</li>
+                    <li>a: Median</li>
+                    <li>t: Matrix Determinant</li>
+                    <li>%: Percentage</li>
+                    <li>>: Greater than</li>
+                    <li><: Less than</li>
+                    <li>>=: Greater than or equal to</li>
+                    <li><=: Less than or equal to</li>
+                    <li>!=: Not equal to</li>
+                    <li>==: Equal to</li>
+                </ul>
+                <button class="absolute top-4 right-4 text-gray-500 hover:text-gray-700" 
+                        @click="toggleKeybindsModal"
+                        style="position: absolute; top: 16px; right: 16px; font-size: 1.5em; background: none; border: none; cursor: pointer;">
+                    &times;
+                </button>
+            </div>
+        </div>
+
+        <!-- Replace the existing exponent modal with this -->
+        <div class="modal modal-bottom sm:modal-middle" 
+             :class="{ 
+                 'modal-open': showExponentModal,
+                 'modal-closing': isClosing 
+             }"
+             @click.self="closeExponentModal">
+            <div class="modal-box relative pb-16" 
+                 :class="{ 
+                     'modal-grow': showExponentModal && !isClosing, 
+                     'modal-shrink': isClosing 
+                 }">
+                <h2 class="text-xl font-bold mb-4">Enter Exponent</h2>
+                <div class="form-control mb-8">
+                    <div class="relative flex items-center">
+                        <input type="number" 
+                               v-model="exponentValue" 
+                               placeholder="Enter exponent" 
+                               class="input input-bordered w-full pr-20" 
+                               @keydown.enter="applyExponent"
+                               style="appearance: textfield;" />
+                        <div class="absolute right-2 inset-y-1 flex flex-col justify-center gap-1">
+                            <button @click="incrementExponent(1)" 
+                                    class="flex items-center justify-center h-8 w-8 hover:bg-transparent">
+                                <i class="fas fa-chevron-up text-xs"></i>
+                            </button>
+                            <button @click="incrementExponent(-1)" 
+                                    class="flex items-center justify-center h-8 w-8 hover:bg-transparent">
+                                <i class="fas fa-chevron-down text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="absolute bottom-4 right-4 flex gap-2">
+                    <button class="btn btn-primary" @click="applyExponent">Apply</button>
+                    <button class="btn" @click="closeExponentModal">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add this modal after your other modals -->
+        <div class="modal modal-bottom sm:modal-middle" 
+             :class="{ 
+                 'modal-open': showFractionModal,
+                 'modal-closing': isClosing 
+             }"
+             @click.self="closeFractionModal">
+            <div class="modal-box relative pb-16" 
+                 :class="{ 
+                     'modal-grow': showFractionModal && !isClosing, 
+                     'modal-shrink': isClosing 
+                 }">
+                <h2 class="text-xl font-bold mb-4">Enter Fraction</h2>
+                <div class="form-control mb-8">
+                    <div class="flex items-center gap-2">
+                        <input type="number" 
+                               v-model="numerator" 
+                               placeholder="Numerator" 
+                               class="input input-bordered w-full" 
+                               @keydown.enter="applyFraction" />
+                        <div class="text-2xl">/</div>
+                        <input type="number" 
+                               v-model="denominator" 
+                               placeholder="Denominator" 
+                               class="input input-bordered w-full" 
+                               @keydown.enter="applyFraction" />
+                    </div>
+                </div>
+                <div class="absolute bottom-4 right-4 flex gap-2">
+                    <button class="btn btn-primary" @click="applyFraction">Apply</button>
+                    <button class="btn" @click="closeFractionModal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+      new Vue({
+        el: '#app',
+        data: {
+            display: '0',
+            operator: null,
+            firstOperand: null,
+            showCalculator: true,
+            showKeybindsModal: false,
+            inputEnabled: false,
+            memory: 0,
+            expression: '',
+            showInputModal: false,
+            inputNumbers: '',
+            currentFunction: null,
+            showExponentModal: false,
+            exponentValue: 2, // Default exponent value
+            inputEnabled: true, // Track if input is enabled
+            isClosing: false,
+            showFractionModal: false,
+            numerator: '',
+            denominator: '',
+            showReportModal: false,
+        },
+        methods: {
+            appendNumber(number) {
+                if (this.isError()) return;
+
+                // Split the expression by operators to get the last number
+                const operators = ['+', '-', '*', '/', ' '];
+                let lastNumber = this.display;
+                let beforeNumber = '';
+                
+                // Find the last operator in the expression
+                const lastOperatorIndex = Math.max(
+                    ...operators.map(op => this.display.lastIndexOf(op))
+                );
+
+                if (lastOperatorIndex !== -1) {
+                    lastNumber = this.display.substring(lastOperatorIndex + 1).trim();
+                    beforeNumber = this.display.substring(0, lastOperatorIndex + 1);
+                }
+
+                // Handle leading zeros
+                if (lastNumber === '0') {
+                    // Replace the zero with the new number unless it's a decimal
+                    this.display = beforeNumber + number;
+                    this.expression = this.display;
+                } else {
+                    // Append the number normally
+                    this.display += number;
+                    this.expression += number;
+                }
+            },
+            appendDecimal(decimal) {
+                if (this.isError()) return;
+
+                if (!this.display.includes(decimal)) {
+                    this.display += decimal;
+                    this.expression += decimal;
+                }
+            },
+            setOperator(op) {
+                if (this.isError()) return;
+
+                if (this.display !== '0' || this.expression !== '') {
+                    this.expression += ` ${op} `;
+                    this.display = this.expression;
+                }
+            },
+            calculate() {
+                if (this.isError()) return;
+
+                try {
+                    // Use math.js to evaluate the expression
+                    const result = math.evaluate(this.expression);
+                    this.display = result.toString();
+                    this.expression = result.toString();
+                } catch (error) {
+                    this.display = 'Error';
+                }
+            },
+            clearDisplay() {
+                this.display = '0';
+                this.expression = '';
+            },
+            calculateSquareRoot() {
+                if (this.isError()) return;
+
+                this.expression += '√(';
+                this.display = this.expression;
+            },
+            calculateSquare() {
+                if (this.isError()) return;
+                this.showExponentModal = true;
+                this.isClosing = false;
+                this.inputEnabled = false;
+                window.removeEventListener('keydown', this.handleKeyPress);
+            },
+            calculateInverse() {
+                if (this.isError()) return;
+
+                if (parseFloat(this.display) !== 0) {
+                    this.display = (1 / parseFloat(this.display)).toString();
+                } else {
+                    this.display = 'Error';
+                }
+            },
+            toggleSign() {
+                if (this.isError()) return;
+
+                const currentNumber = this.display.split(' ').pop();
+                if (currentNumber === '0' || currentNumber === '-0') {
+                    this.display = 'Error';
+                    this.expression = '';
+                    return;
+                }
+                
+                if (currentNumber.startsWith('-')) {
+                    this.display = this.display.slice(0, -currentNumber.length) + currentNumber.substring(1);
+                    this.expression = this.display;
+                } else {
+                    this.display = this.display.slice(0, -currentNumber.length) + '-' + currentNumber;
+                    this.expression = this.display;
+                }
+            },
+            toggleKeybindsModal() {
+                if (this.showKeybindsModal) {
+                    // Start closing animations
+                    this.isClosing = true;
+                    
+                    // Wait for animations to complete before hiding modal
+                    setTimeout(() => {
+                        this.showKeybindsModal = false;
+                        this.isClosing = false;
+                    }, 300);
+                } else {
+                    this.showKeybindsModal = true;
+                    this.isClosing = false;
+                }
+            },
+            enableInput() {
+                this.inputEnabled = true;
+            },
+            disableInput() {
+                this.inputEnabled = false;
+            },
+            handleKeyPress(event) {
+                // Handle Enter key for exponent modal
+                if (this.showExponentModal && event.key === 'Enter') {
+                    event.preventDefault(); // Prevent default Enter behavior
+                    this.applyExponent();
+                    return;
+                }
+
+                // Completely ignore all keyboard events if keybinds modal is open
+                if (this.showKeybindsModal) {
+                    event.preventDefault();
+                    return;
+                }
+
+                // Regular calculator keyboard handling
+                if (this.isError() && event.key.toLowerCase() !== 'c') return;
+
+                if (!this.inputEnabled) {
+                    const key = event.key;
+                    if (!isNaN(key) || key === '0') {
+                        this.appendNumber(key);
+                    } else if (key === '.') {
+                        this.appendDecimal('.');
+                    } else if (key === '+') {
+                        this.setOperator('+');
+                    } else if (key === '-') {
+                        this.setOperator('-');
+                    } else if (key === '*') {
+                        this.setOperator('*');
+                    } else if (key === '/') {
+                        this.setOperator('/');
+                    } else if (key === 'Enter') {
+                        this.calculate();
+                    } else if (key === 'c' || key === 'C') {
+                        this.clearDisplay();
+                    } else if (key === 'n' || key === 'N') {
+                        this.toggleSign();
+                    } else if (key === 'l' || key === 'L') {
+                        this.calculateLogarithm();
+                    } else if (key === 'e' || key === 'E') {
+                        this.calculateExponent();
+                    } else if (key === 'v' || key === 'V') {
+                        this.evaluateExpression();
+                    } else if (key === 'f' || key === 'F') {
+                        this.calculateFactorial();
+                    } else if (key === 'd' || key === 'D') {
+                        this.calculateDerivative();
+                    } else if (key === 'i' || key === 'I') {
+                        this.calculateIntegral();
+                    } else if (key === 'm' || key === 'M') {
+                        this.calculateMean();
+                    } else if (key === 'a' || key === 'A') {
+                        this.calculateMedian();
+                    } else if (key === 't' || key === 'T') {
+                        this.calculateMatrixDeterminant();
+                    } else if (key === '%') {
+                        this.calculatePercentage();
+                    } else if (key === '>') {
+                        this.setOperator('>');
+                    } else if (key === '<') {
+                        this.setOperator('<');
+                    } else if (event.shiftKey && key === '=') {
+                        this.setOperator('>=');
+                    } else if (event.shiftKey && key === '-') {
+                        this.setOperator('<=');
+                    } else if (key === '!') {
+                        this.setOperator('!=');
+                    } else if (key === '=') {
+                        this.setOperator('==');
+                    }
+                }
+            },
+            calculateSine() {
+                if (this.isError()) return;
+
+                this.display = Math.sin(parseFloat(this.display) * Math.PI / 180).toString();
+            },
+            calculateCosine() {
+                if (this.isError()) return;
+
+                this.display = Math.cos(parseFloat(this.display) * Math.PI / 180).toString();
+            },
+            calculateTangent() {
+                if (this.isError()) return;
+
+                this.display = Math.tan(parseFloat(this.display) * Math.PI / 180).toString();
+            },
+            storeMemory() {
+                if (this.isError()) return;
+
+                this.memory = parseFloat(this.display);
+            },
+            recallMemory() {
+                if (this.isError()) return;
+
+                this.display = this.memory.toString();
+            },
+            clearMemory() {
+                this.memory = 0;
+            },
+            calculateLogarithm() {
+                if (this.isError()) return;
+
+                if (parseFloat(this.display) > 0) {
+                    this.display = Math.log10(parseFloat(this.display)).toString();
+                } else {
+                    this.display = 'Error';
+                }
+            },
+            calculateExponent() {
+                if (this.isError()) return;
+
+                this.display = Math.exp(parseFloat(this.display)).toString();
+            },
+            evaluateExpression() {
+                if (this.isError()) return;
+
+                try {
+                    this.display = eval(this.expression).toString();
+                } catch (error) {
+                    this.display = 'Error';
+                }
+            },
+            calculateFactorial() {
+                if (this.isError()) return;
+
+                const num = parseInt(this.display);
+                if (num < 0) return this.display = 'Error';
+                let result = 1;
+                for (let i = 2; i <= num; i++) {
+                    result *= i;
+                }
+                this.display = result.toString();
+            },
+            calculateDerivative() {
+                this.display = 'Derivative';
+            },
+            calculateIntegral() {
+                this.display = 'Integral';
+            },
+            calculateMean() {
+                this.openInputModal('mean');
+            },
+            calculateMedian() {
+                this.display = 'Median';
+            },
+            calculateMatrixDeterminant() {
+                this.display = 'Determinant';
+            },
+            setupTooltips() {
+                const buttons = document.querySelectorAll('.calculator-button');
+                const tooltip = document.createElement('div');
+                tooltip.className = 'tooltip';
+                document.body.appendChild(tooltip);
+
+                let tooltipTimeout;
+
+                buttons.forEach(button => {
+                    button.addEventListener('mouseenter', (event) => {
+                        tooltipTimeout = setTimeout(() => {
+                            tooltip.textContent = button.getAttribute('data-tooltip');
+                            tooltip.style.opacity = '1';
+                            tooltip.style.visibility = 'visible';
+                        }, 500);
+                    });
+
+                    button.addEventListener('mousemove', (event) => {
+                        tooltip.style.left = `${event.pageX + 10}px`;
+                        tooltip.style.top = `${event.pageY + 10}px`;
+                    });
+
+                    button.addEventListener('mouseleave', () => {
+                        clearTimeout(tooltipTimeout);
+                        tooltip.style.opacity = '0';
+                        tooltip.style.visibility = 'hidden';
+                    });
+                });
+            },
+            openInputModal(functionName) {
+                this.currentFunction = functionName;
+                this.showInputModal = true;
+            },
+            closeInputModal() {
+                this.showInputModal = false;
+                this.inputNumbers = '';
+            },
+            processInput() {
+                const numbers = this.inputNumbers.split(',').map(Number).filter(n => !isNaN(n));
+                if (this.currentFunction === 'mean') {
+                    this.calculateMean(numbers);
+                }
+                this.closeInputModal();
+            },
+            calculateMean(numbers) {
+                if (numbers.length === 0) {
+                    this.display = 'Error';
+                    return;
+                }
+                const sum = numbers.reduce((acc, num) => acc + num, 0);
+                const mean = sum / numbers.length;
+                this.display = mean.toString();
+            },
+            calculatePercentage() {
+                if (this.isError()) return;
+
+                this.display = (parseFloat(this.display) / 100).toString();
+                this.expression = this.display;
+            },
+            isError() {
+                return this.display === 'Error';
+            },
+            closeParenthesis() {
+                if (this.isError()) return;
+
+                if (this.expression.includes('√(') && !this.expression.endsWith(')')) {
+                    this.expression += ')';
+                    this.display = this.expression;
+                }
+            },
+            applyExponent() {
+                if (this.isError()) return;
+
+                const base = parseFloat(this.display);
+                const exponent = this.exponentValue;
+                
+                if (!isNaN(base) && !isNaN(exponent)) {
+                    const result = Math.pow(base, exponent);
+                    const lastSpaceIndex = this.expression.lastIndexOf(' ');
+                    
+                    if (lastSpaceIndex !== -1) {
+                        const beforeNumber = this.expression.substring(0, lastSpaceIndex + 1);
+                        this.expression = beforeNumber + `${base}^${exponent}`;
+                    } else {
+                        this.expression = `${base}^${exponent}`;
+                    }
+                    
+                    this.display = this.expression;
+                } else {
+                    this.display = 'Error';
+                }
+                
+                this.closeExponentModal();
+            },
+            closeExponentModal() {
+                this.isClosing = true;
+                setTimeout(() => {
+                    this.showExponentModal = false;
+                    this.isClosing = false;
+                    this.exponentValue = 2;
+                    this.inputEnabled = true;
+                    window.addEventListener('keydown', this.handleKeyPress);
+                }, 300);
+            },
+            incrementExponent(amount) {
+                const newValue = parseFloat(this.exponentValue) + amount;
+                if (!isNaN(newValue)) {
+                    this.exponentValue = newValue;
+                }
+            },
+            openParenthesis() {
+                if (this.isError()) return;
+                
+                this.expression += '(';
+                this.display = this.expression;
+            },
+            convertToFraction() {
+                if (this.isError()) return;
+                
+                try {
+                    // Split the expression by operators to get the last number
+                    const operators = ['+', '-', '*', '/', ' '];
+                    let lastNumber = this.display;
+                    let beforeNumber = '';
+                    
+                    // Find the last operator in the expression
+                    const lastOperatorIndex = Math.max(
+                        ...operators.map(op => this.display.lastIndexOf(op))
+                    );
+
+                    if (lastOperatorIndex !== -1) {
+                        lastNumber = this.display.substring(lastOperatorIndex + 1).trim();
+                        beforeNumber = this.display.substring(0, lastOperatorIndex + 1);
+                    }
+
+                    // Check if the last number is already a fraction
+                    if (lastNumber.includes('/')) {
+                        return;
+                    }
+
+                    const currentNum = parseFloat(lastNumber);
+                    if (isNaN(currentNum)) {
+                        this.display = 'Error';
+                        return;
+                    }
+
+                    // Handle whole numbers
+                    if (Number.isInteger(currentNum)) {
+                        this.display = beforeNumber + `${currentNum}/1`;
+                        this.expression = this.display;
+                        return;
+                    }
+
+                    // Handle decimals
+                    const decimalStr = currentNum.toString();
+                    const decimalPlaces = decimalStr.includes('.') ? 
+                        decimalStr.split('.')[1].length : 0;
+                    
+                    if (decimalPlaces > 0) {
+                        const numerator = currentNum * Math.pow(10, decimalPlaces);
+                        const denominator = Math.pow(10, decimalPlaces);
+                        
+                        // Simplify the fraction
+                        const gcd = this.findGCD(Math.abs(numerator), denominator);
+                        const simplifiedNum = numerator / gcd;
+                        const simplifiedDen = denominator / gcd;
+                        
+                        this.display = beforeNumber + `${simplifiedNum}/${simplifiedDen}`;
+                        this.expression = this.display;
+                    }
+                } catch (error) {
+                    this.display = 'Error';
+                }
+            },
+            findGCD(a, b) {
+                a = Math.abs(a);
+                b = Math.abs(b);
+                while (b) {
+                    const temp = b;
+                    b = a % b;
+                    a = temp;
+                }
+                return a;
+            },
+            applyFraction() {
+                if (!this.numerator || !this.denominator || parseFloat(this.denominator) === 0) {
+                    this.display = 'Error';
+                    this.closeFractionModal();
+                    return;
+                }
+
+                const num = parseFloat(this.numerator);
+                const den = parseFloat(this.denominator);
+                
+                // Keep the fraction format in both display and expression
+                const fractionStr = `${num}/${den}`;
+                this.display = fractionStr;
+                this.expression = fractionStr; // Keep as fraction instead of converting to decimal
+                
+                this.closeFractionModal();
+            },
+            closeFractionModal() {
+                this.isClosing = true;
+                setTimeout(() => {
+                    this.showFractionModal = false;
+                    this.isClosing = false;
+                    this.numerator = '';
+                    this.denominator = '';
+                    this.inputEnabled = true;
+                    window.addEventListener('keydown', this.handleKeyPress);
+                }, 300);
+            },
+            backspace() {
+                if (this.isError()) {
+                    this.clearDisplay();
+                    return;
+                }
+
+                // Handle empty display or single character
+                if (!this.display || this.display === '0') {
+                    this.display = '0';
+                    this.expression = '0';
+                    return;
+                }
+
+                // Remove last character
+                this.display = this.display.slice(0, -1);
+                this.expression = this.expression.slice(0, -1);
+
+                // If display is empty after backspace, set to 0
+                if (!this.display) {
+                    this.display = '0';
+                    this.expression = '0';
+                }
+            },
+            toggleReportModal() {
+                if (this.showReportModal) {
+                    this.isClosing = true;
+                    setTimeout(() => {
+                        this.showReportModal = false;
+                        this.isClosing = false;
+                    }, 300);
+                } else {
+                    this.showReportModal = true;
+                    this.isClosing = false;
+                }
+            },
+            submitReport() {
+                // Logic to handle report submission
+                console.log("Report submitted");
+                this.toggleReportModal();
+            },
+        },
+        mounted() {
+            window.addEventListener('keydown', this.handleKeyPress);
+            this.setupTooltips();
+        },
+        beforeDestroy() {
+            window.removeEventListener('keydown', this.handleKeyPress);
+        }
+      });
+    </script>
+</body>
+</html>

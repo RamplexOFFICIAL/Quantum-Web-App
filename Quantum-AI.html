@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@2.33.0/dist/full.css" rel="stylesheet" type="text/css" />
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/emailjs-com@2.3.2/dist/email.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+      /* Wit Chat Bubble Styles */
+      .chat-container {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 180px); /* Adjust the height as needed */
+        overflow-y: auto;
+        padding: 20px;
+        background-color: transparent; /* Transparent background */
+      }
+      .message {
+        display: flex;
+        margin-bottom: 15px;
+      }
+      .user-message {
+        justify-content: flex-end;
+      }
+      .assistant-message {
+        justify-content: flex-start;
+      }
+      .message-bubble {
+        background-color: #212121; /* Dark gray for user bubbles */
+        border-radius: 8px;
+        padding: 10px 15px;
+        max-width: 70%;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        color: #fff; /* White text for contrast */
+        cursor: pointer;  /* Make the bubbles clickable */
+        transition: transform 0.2s ease-in-out;
+      }
+      .user-message .message-bubble {
+        background-color: #3f51b5; /* Darker blue for user bubbles */
+        color: #fff; 
+      }
+      .message-bubble:hover {
+        transform: translateY(-2px);
+      }
+      .message-time {
+        font-size: 12px;
+        color: #999; /* Slightly lighter gray for time */
+        margin-top: 5px;
+        align-self: flex-end;
+      }
+      .user-message .message-time {
+        margin-left: 10px;
+      }
+      .assistant-message .message-time {
+        margin-right: 10px;
+      }
+
+      .like-dislike-container {
+        display: flex;
+        align-items: center;
+        margin-top: 5px;
+      }
+
+      .like-dislike-container button {
+        background: none;
+        border: none;
+        margin: 0 5px;
+        padding: 5px;
+        cursor: pointer;
+        color: #fff; /* Or whatever color you want */
+      }
+
+      .like-dislike-container button:hover {
+        text-decoration: underline;
+      }
+
+      .like-dislike-container .like-count,
+      .like-dislike-container .dislike-count {
+        font-size: 12px;
+        color: #999;
+        margin-left: 5px;
+      }
+
+      .loading-indicator {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 10px;
+      }
+
+      .loading-indicator .spinner {
+        border: 4px solid #f3f3f3; /* Light gray for the spinner */
+        border-radius: 50%;
+        border-top-color: #3f51b5; /* Darker blue for the spinner */
+        width: 20px;
+        height: 20px;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      @keyframes shrink {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+      }
+
+      .modal-shrink .modal-box {
+        animation: shrink 0.3s ease-in forwards;
+      }
+
+      @keyframes grow {
+        0% {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      .modal-grow .modal-box {
+        animation: grow 0.3s ease-out forwards;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app" class="min-h-screen bg-base-200"> <header class="bg-base-100 shadow-lg">
+        <div class="container mx-auto py-4 flex justify-between items-center">
+          <h1 class="text-2xl font-bold">
+            <a href="index.html">
+              <img src="https://www.svgrepo.com/show/444899/ai-solid.svg" 
+                   alt="AI Logo" 
+                   class="inline-block h-8 w-8 mr-2 filter invert" 
+                   style="filter: brightness(0) invert(1);">
+              Quantum AI
+            </a>
+          </h1>
+          <div>
+            <button v-show="!isLoggedIn" @click="showLogin = true" class="btn btn-primary mr-2">Log In</button>
+            <button v-show="!isLoggedIn" @click="showSignupForm = true" class="btn btn-primary">Sign Up</button>
+            <button v-show="isLoggedIn" @click="showProfile = true" class="btn btn-primary mr-2">Profile</button>
+            <button v-show="isLoggedIn" @click="logout" class="btn btn-primary">Log Out</button>
+          </div>
+        </div>
+      </header>
+
+      <div v-show="showLogin" class="modal modal-open">
+        <div class="modal-box">
+          <h3 class="font-bold text-lg">Login</h3>
+          <div class="form-control w-full max-w-xs">
+            <label class="label">
+              <span class="label-text">Email</span>
+            </label>
+            <input type="text" v-model="loginEmail" placeholder="Email" class="input input-bordered w-full max-w-xs" />
+          </div>
+          <div class="form-control w-full max-w-xs">
+            <label class="label">
+              <span class="label-text">Password</span>
+            </label>
+            <input type="password" v-model="loginPassword" placeholder="Password" class="input input-bordered w-full max-w-xs" />
+          </div>
+          <div class="modal-action">
+            <button @click="login" class="btn btn-primary">Login</button>
+            <button @click="showLogin = false" class="btn btn-outline">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div v-show="showSignupForm" class="modal modal-open">
+        <div class="modal-box">
+          <h3 class="font-bold text-lg">Sign Up</h3>
+          <div class="form-control w-full max-w-xs">
+            <label class="label">
+              <span class="label-text">Email</span>
+            </label>
+            <input type="text" v-model="signupEmail" placeholder="Email" class="input input-bordered w-full max-w-xs" />
+          </div>
+          <div class="form-control w-full max-w-xs">
+            <label class="label">
+              <span class="label-text">Password</span>
+            </label>
+            <input type="password" v-model="signupPassword" placeholder="Password" class="input input-bordered w-full max-w-xs" />
+          </div>
+          <div class="modal-action">
+            <button @click="signup" class="btn btn-primary">Sign Up</button>
+            <button @click="showSignupForm = false" class="btn btn-outline">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div v-show="showError" class="modal modal-open">
+        <div class="modal-box">
+          <h3 class="font-bold text-lg">Error</h3>
+          <p>{{ error }}</p>
+          <div class="modal-action">
+            <button @click="showError = false" class="btn btn-primary">OK</button>
+          </div>
+        </div>
+      </div>
+
+      <div v-show="!isLoggedIn" class="flex justify-center items-center min-h-screen">
+        <div class="hero min-h-screen bg-base-200">
+          <div class="hero-content text-center">
+            <div class="max-w-md">
+              <h1 class="text-5xl font-bold">Quantum AI</h1>
+              <p class="py-6">Experience the power of advanced AI chat. Engage in insightful conversations and explore the world of possibilities.</p>
+              <button class="btn btn-primary" @click="showSignupForm = true">Get Started</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-show="isLoggedIn &&!showChat &&!showProfile &&!profileCreated" class="flex justify-center items-center min-h-screen">
+        <div class="card w-96 bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h2 class="card-title justify-center">Welcome, please set up your profile</h2>
+            <div class="form-control w-full max-w-xs">
+              <label class="label">
+                <span class="label-text">Username</span>
+              </label>
+              <input type="text" v-model="userName" placeholder="Username" class="input input-bordered w-full max-w-xs" />
+            </div>
+            <div class="form-control w-full max-w-xs">
+              <label class="label">
+                <span class="label-text">Email</span>
+              </label>
+              <input type="text" v-model="currentUserEmail" disabled class="input input-bordered w-full max-w-xs" />
+            </div>
+            <div class="form-control w-full max-w-xs">
+              <label class="label">
+                <span class="label-text">Bio</span>
+              </label>
+              <textarea v-model="userBio" placeholder="Bio" class="textarea textarea-bordered w-full max-w-xs"></textarea>
+            </div>
+            <div class="card-actions justify-center">
+              <button @click="createUser" class="btn btn-primary">Create User</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-show="showProfile" class="modal modal-open">
+        <div class="modal-box">
+          <h3 class="font-bold text-lg mb-4">Profile</h3>
+          <div class="form-control w-full max-w-xs mb-4">
+            <label class="label">
+              <span class="label-text">Email</span>
+            </label>
+            <input type="text" v-model="currentUserEmail" disabled class="input input-bordered w-full max-w-xs" />
+          </div>
+          <div class="form-control w-full max-w-xs mb-4">
+            <label class="label">
+              <span class="label-text">Username</span>
+            </label>
+            <input type="text" v-model="userName" placeholder="Username" class="input input-bordered w-full max-w-xs" />
+          </div>
+          <div class="form-control w-full max-w-xs mb-6">
+            <label class="label">
+              <span class="label-text">Bio</span>
+            </label>
+            <textarea v-model="userBio" placeholder="Bio" class="textarea textarea-bordered w-full max-w-xs"></textarea>
+          </div>
+          <div class="modal-action">
+            <button @click="updateUser" class="btn btn-primary">Save Changes</button>
+            <button @click="showProfile = false" class="btn btn-outline">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <div v-show="showChat" class="flex justify-center items-start pt-10 min-h-screen">
+        <div class="card w-full max-w-3xl bg-base-200"> 
+          <div class="card-body">
+            <h2 class="card-title">
+              <span 
+                @click="openEditChatNameModal" 
+                class="cursor-pointer hover:bg-base-300 p-1 rounded transition-colors"
+              >
+                {{ currentChatName || 'Chat-Ramplex' }}
+                <i class="fas fa-edit text-sm ml-2 text-gray-500"></i>
+              </span>
+            </h2>
+            <div class="chat-container flex flex-col bg-base-200"> 
+              <div class="flex items-center mt-4">
+                <div class="message-bubble assistant-message" style="background-color: #e0e0e0; color: #333;">
+                  <p>Hello, {{ userName }} 👋</p>
+                  <p>How can I help you today?</p>
+                  <span class="message-time">Now</span>
+                </div>
+              </div>
+              <div v-for="(message, index) in messages" :key="index" class="message" :class="{ 'user-message': message.role === 'user', 'assistant-message': message.role === 'assistant' }">
+                <div class="message-bubble" @click="insertPrompt(message.content)"> 
+                  <p v-html="formatResponse(message.content)"></p>
+                  <span class="message-time">{{ formatTimestamp(message.timestamp) }}</span>
+                  <div v-if="message.role === 'assistant'" class="like-dislike-container">
+                    <button v-if="!message.likedByUser" @click="likeMessage(index)">👍</button>
+                    <span class="like-count">{{ message.likes || 0 }}</span>
+                    <button v-if="!message.dislikedByUser" @click="dislikeMessage(index)">👎</button>
+                    <span class="dislike-count">{{ message.dislikes || 0 }}</span>
+                    <button v-if="message.role === 'assistant'" @click="copyMessage(message.content)" class="ml-2">Copy</button>
+                  </div>
+                </div>
+              </div>
+              <div v-if="loading" class="loading-indicator">
+                <div class="spinner"></div>
+              </div>
+            </div>
+            <div class="flex items-center pt-4 relative">
+              <button @click="toggleRecording" class="btn btn-primary mr-2">
+                <i :class="isRecording ? 'fas fa-stop' : 'fas fa-microphone'"></i>
+              </button>
+              <div class="relative">
+                <button @click="toggleDropdown" class="btn btn-primary mr-2">
+                  <i class="fas fa-comments"></i>
+                </button>
+                <div v-if="showDropdown" class="dropdown-menu absolute bg-white shadow-lg rounded-md mb-2" style="bottom: 100%; left: 0; width: 150px;">
+                  <button @click="createNewChat" class="dropdown-item block px-4 py-2 text-sm text-gray-700">Create New Chat</button>
+                </div>
+              </div>
+              <input type="text" v-model="message" @keyup.enter="sendMessage" placeholder="Enter your message..." class="input input-bordered w-full mr-2" />
+              <button @click="sendMessage" class="btn btn-primary">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit Chat Name Lightbox -->
+      <div v-if="showEditChatNameLightbox" class="modal modal-open">
+        <div class="modal-box">
+          <h3 class="font-bold text-lg">Edit Chat Name</h3>
+          <div class="form-control w-full max-w-xs">
+            <label class="label">
+              <span class="label-text">Chat Name</span>
+            </label>
+            <input type="text" v-model="editChatName" placeholder="Enter new chat name" class="input input-bordered w-full max-w-xs" />
+          </div>
+          <div class="modal-action">
+            <button @click="saveChatName" class="btn btn-primary">Save</button>
+            <button @click="closeEditChatNameModal" class="btn btn-outline">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyCo5uPLp5Iop6oIXmBrquzMk4qGlU_iUQc",
+        authDomain: "quantum-ai-20113.firebaseapp.com",
+        projectId: "quantum-ai-20113",
+        storageBucket: "quantum-ai-20113.appspot.com",
+        messagingSenderId: "888477914408",
+        appId: "1:888477914408:web:0c3b28b59b2c1734e5ac1d",
+        measurementId: "G-CLDWBB4LKW"
+      };
+      firebase.initializeApp(firebaseConfig);
+
+      const auth = firebase.auth();
+      new Vue({
+        el: '#app',
+        data: {
+          message: '',
+          messages: [],
+          loading: false,
+          error: null,
+          showError: false,
+          showChat: false,
+          userName: '',
+          userBio: '',
+          isLoggedIn: false,
+          showLogin: false,
+          showSignupForm: false,
+          showProfile: false,
+          loginEmail: '',
+          loginPassword: '',
+          signupEmail: '',
+          signupPassword: '',
+          currentUserEmail: '',
+          profileCreated: false,
+          isRecording: false,
+          recognition: null,
+          showDropdown: false,
+          showEditChatNameLightbox: false,
+          editChatName: '',
+          currentChatName: 'Chat-Ramplex',
+        },
+        methods: {
+          login() {
+            auth.signInWithEmailAndPassword(this.loginEmail, this.loginPassword)
+             .then((userCredential) => {
+                this.isLoggedIn = true;
+                this.showLogin = false;
+                this.currentUserEmail = userCredential.user.email;
+                // Check if profile is already created 
+                this.checkProfile();
+              })
+             .catch((error) => {
+                console.error("Error logging in", error);
+                this.error = error.message;
+                this.showError = true;
+              });
+          },
+          signup() {
+            auth.createUserWithEmailAndPassword(this.signupEmail, this.signupPassword)
+             .then((userCredential) => {
+                this.isLoggedIn = true;
+                this.showSignupForm = false;
+                this.currentUserEmail = userCredential.user.email; 
+                // Check if profile is already created 
+                this.checkProfile();
+              })
+             .catch((error) => {
+                console.error("Error signing up", error);
+                this.error = error.message;
+                this.showError = true;
+              });
+          },
+          logout() {
+            auth.signOut()
+             .then(() => {
+                console.log("Logged out");
+                this.isLoggedIn = false;
+                this.showChat = false;
+                this.userName = '';
+                this.userBio = '';
+                this.messages = [];
+                this.currentUserEmail = ''; 
+                this.profileCreated = false; 
+              })
+             .catch((error) => {
+                console.error("Error logging out", error);
+                this.error = "Error logging out";
+                this.showError = true;
+              });
+          },
+          createUser() {
+            if (this.userName.trim()!== '' && this.userBio.trim()!== '') {
+              this.showChat = true;
+              this.profileCreated = true; // Set the flag to true 
+              localStorage.setItem(`user-${this.currentUserEmail}`, JSON.stringify({ userName: this.userName, userBio: this.userBio }));
+            } else {
+              this.error = "Please enter a username and bio.";
+              this.showError = true;
+            }
+          },
+          updateUser() {
+            if (this.userName.trim()!== '' && this.userBio.trim()!== '') {
+              localStorage.setItem(`user-${this.currentUserEmail}`, JSON.stringify({ userName: this.userName, userBio: this.userBio }));
+              this.showProfile = false;
+            } else {
+              this.error = "Please enter a username and bio.";
+              this.showError = true;
+            }
+          },
+          async handleSendMessage() {
+            this.loading = true;
+            this.error = null;
+            if (this.message.trim()!== '') {
+              const messageWithFullForms = this.replaceAbbreviations(this.message);
+              const userMessage = { role: "user", content: messageWithFullForms, timestamp: Date.now() };
+              this.messages.push(userMessage);
+              this.message = "";
+
+              try {
+                const data = await generateText(this.messages);
+                console.log('RESPONSE', data);
+
+                // Process the AI response and add emojis if needed
+                const processedResponse = this.addEmojis(data);
+
+                this.messages.push({ 
+                  role: "assistant", 
+                  content: processedResponse, 
+                  timestamp: Date.now(),
+                  likes: 0, // Initialize likes and dislikes
+                  dislikes: 0,
+                  likedByUser: false, // Track if user has liked
+                  dislikedByUser: false // Track if user has disliked
+                });
+                this.loading = false;
+              } catch (e) {
+                console.error(e);
+                this.error = "Error generating text";
+                this.showError = true;
+                this.loading = false;
+              }
+            }
+          },
+          sendMessage() {
+ 
+            this.handleSendMessage();
+          },
+          formatResponse(response) {
+            return response.replace(/<br\s*\/?>/gi, "").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+          },
+          // Function to replace abbreviations
+          replaceAbbreviations(text) {
+            const abbreviations = {
+              "wsp": "what's up",
+              "brb": "be right back",
+              "lol": "laugh out loud",
+              "imo": "in my opinion",
+              "btw": "by the way",
+              "ttyl": "talk to you later",
+              "thx": "thanks",
+              "thnx": "thanks",
+              "np": "no problem",
+              "asap": "as soon as possible",
+              "idk": "I don't know",
+              "nvm": "never mind",
+              "omg": "oh my god",
+              "afk": "away from keyboard",
+              "ama": "ask me anything",
+              "b4": "before",
+              "cu": "see you",
+              "cya": "see you",
+              "diy": "do it yourself",
+              "dm": "direct message",
+              "eli5": "explain like I'm 5",
+              "faq": "frequently asked questions",
+              "fb": "Facebook",
+              "fml": "for my life", // Use with caution!
+              "ftw": "for the win",
+              "fyi": "for your information",
+              "gtg": "got to go",
+              "hmu": "hit me up",
+              "ic": "I see",
+              "ily": "I love you", 
+              "imho": "in my humble opinion",
+              "irl": "in real life",
+              "jk": "just kidding",
+              "lmk": "let me know",
+              "n/a": "not applicable",
+              "nsfw": "not safe for work", 
+              "ofc": "of course",
+              "pls": "please",
+              "ppl": "people",
+              "pov": "point of view",
+              "rofl": "rolling on the floor laughing",
+              "smh": "shaking my head",
+              "tbh": "to be honest",
+              "tmi": "too much information",
+              "yolo": "you only live once",
+              "afaik": "as far as I know",
+              "amaa": "ask me almost anything",
+              "bff": "best friends forever",
+              "cray": "crazy", 
+              "dunno": "don't know",
+              "eta": "estimated time of arrival",
+              "gr8": "great",
+              "hbd": "happy birthday",
+              "ikr": "I know, right?",
+              "lmao": "laughing my ass off", 
+              "nbd": "no big deal",
+              "omw": "on my way",
+              "rn": "right now",
+              "sfw": "safe for work",
+              "sry": "sorry",
+              "sup": "what's up",
+              "tfw": "that feeling when",
+              "tldr": "too long; didn't read",
+              "ty": "thank you",
+              "wbu": "what about you",
+              "wtf": "what the f*", // Use with caution!
+              "wywh": "wish you were here",
+              "bro": "brother",
+              "man": "man", 
+              "girl": "girl"
+            };
+
+            for (const abbreviation in abbreviations) {
+              if (abbreviations.hasOwnProperty(abbreviation)) {
+                text = text.replace(new RegExp(abbreviation, "gi"), abbreviations[abbreviation]);
+              }
+            }
+            return text;
+          },
+          addEmojis(text) {
+            const emojiMap = {
+              "hello": "👋",
+              "happy": "😊",
+              "sad": "😔",
+              "excited": "",
+              "great": "👍",
+              "amazing": "🤩",
+              "love": "❤️",
+              "funny": "😂",
+              "thinking": "🤔",
+              "working": "💻",
+              "music": "🎶",
+              "party": "🎉",
+              "travel": "✈️",
+              "food": "🍕",
+            };
+
+            // Simple approach: replace keywords in text with emojis
+            for (const keyword in emojiMap) {
+              if (text.toLowerCase().includes(keyword)) {
+                text = text.replace(new RegExp(keyword, 'gi'), `${keyword} ${emojiMap[keyword]}`);
+              }
+            }
+            return text;
+          },
+          checkProfile() {
+            // Assuming you have a database or backend to store user profiles
+            const storedProfile = localStorage.getItem(`user-${this.currentUserEmail}`);
+            if (storedProfile) {
+              const { userName, userBio } = JSON.parse(storedProfile);
+              this.userName = userName;
+              this.userBio = userBio;
+              this.profileCreated = true; // Set the flag to true
+              this.showChat = true; // Show the chat directly if profile is already created
+            }
+          },
+          initEmailJS() {
+              emailjs.init("YOUR_API_KEY");
+          },
+          formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            const hours = date.getHours() % 12 || 12; // Convert to 12-hour format
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            const ampm = date.getHours() < 12 ? 'AM' : 'PM';
+            return `${hours}:${minutes} ${ampm}`;
+          },
+          insertPrompt(promptText) {
+            this.message = promptText; 
+          },
+          likeMessage(index) {
+            if (!this.messages[index].likedByUser) {
+              this.messages[index].likes++;
+              this.messages[index].likedByUser = true;
+              if (this.messages[index].dislikedByUser) {
+                this.messages[index].dislikes--;
+                this.messages[index].dislikedByUser = false;
+              }
+            }
+          },
+          dislikeMessage(index) {
+            if (!this.messages[index].dislikedByUser) {
+              this.messages[index].dislikes++;
+              this.messages[index].dislikedByUser = true;
+              if (this.messages[index].likedByUser) {
+                this.messages[index].likes--;
+                this.messages[index].likedByUser = false;
+              }
+            }
+          },
+          copyMessage(text) {
+            navigator.clipboard.writeText(text)
+              .then(() => {
+                console.log("Text copied to clipboard");
+                // You could add a visual cue here, e.g.,
+                // this.showCopySuccess = true;
+              })
+              .catch(err => {
+                console.error('Error copying: ', err);
+              });
+          },
+          toggleRecording() {
+            if (this.isRecording) {
+              this.stopRecording();
+            } else {
+              this.startRecording();
+            }
+          },
+          startRecording() {
+            if (!('webkitSpeechRecognition' in window)) {
+              alert("Your browser does not support speech recognition. Please use Chrome.");
+              return;
+            }
+
+            this.recognition = new webkitSpeechRecognition();
+            this.recognition.continuous = false;
+            this.recognition.interimResults = false;
+            this.recognition.lang = 'en-US';
+
+            this.recognition.onstart = () => {
+              this.isRecording = true;
+            };
+
+            this.recognition.onresult = (event) => {
+              const transcript = event.results[0][0].transcript;
+              this.message = transcript;
+            };
+
+            this.recognition.onerror = (event) => {
+              console.error("Speech recognition error", event);
+              this.error = "Speech recognition error";
+              this.showError = true;
+            };
+
+            this.recognition.onend = () => {
+              this.isRecording = false;
+            };
+
+            this.recognition.start();
+          },
+          stopRecording() {
+            if (this.recognition) {
+              this.recognition.stop();
+              this.isRecording = false;
+            }
+          },
+          closeModal(modalType) {
+            // Add shrink animation class
+            this[modalType] = 'modal-shrink';
+            
+            // Wait for animation to complete before hiding modal
+            setTimeout(() => {
+              this[modalType] = false;
+            }, 300); // Match this with animation duration (0.3s = 300ms)
+          },
+          closeLoginModal() {
+            this.closeModal('showLogin');
+          },
+          toggleDropdown() {
+            this.showDropdown = !this.showDropdown;
+          },
+          createNewChat() {
+            this.currentChatName = 'New Chat';
+            this.messages = [];
+            this.showChat = true;
+            this.showDropdown = false;
+            // Optionally, save the new chat to a database or local storage
+            console.log("New chat created");
+          },
+          openEditChatNameModal() {
+            this.editChatName = this.currentChatName;
+            this.showEditChatNameLightbox = true;
+          },
+          closeEditChatNameModal() {
+            this.showEditChatNameLightbox = false;
+          },
+          saveChatName() {
+            if (this.editChatName.trim() !== '') {
+              this.currentChatName = this.editChatName;
+              this.showEditChatNameLightbox = false;
+            } else {
+              this.error = "Chat name cannot be empty.";
+              this.showError = true;
+            }
+          },
+        },
+        mounted() {
+          this.initEmailJS();
+          auth.onAuthStateChanged((user) => {
+            if (user) {
+              this.isLoggedIn = true;
+              this.showLogin = false;
+              this.currentUserEmail = user.email;
+              // Check if profile is already created 
+              this.checkProfile();
+            } else {
+              this.isLoggedIn = false;
+              this.showLogin = true; 
+              this.showChat = false;
+              this.currentUserEmail = ''; 
+              this.profileCreated = false; 
+            }
+          });
+        }
+      });
+
+      async function generateText(messages) {
+        const { HfInference } = await import(
+          "https://esm.sh/@huggingface/inference"
+        );
+        const hf = new HfInference("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");
+
+        // Further reduce max_tokens for quicker responses
+        const response = await hf.chatCompletion({
+          model: "mistralai/Mixtral-8x7B-Instruct-v0.1",
+          messages: messages,
+          max_tokens: 100, // Reduced from 200
+          temperature: 0.1, // Lowered for more deterministic responses
+          seed: 0,
+        });
+        return response.choices[0].message.content;
+      }
+    </script>
+  </body>
+</html>
